@@ -1,0 +1,21 @@
+:root {
+  --footer-foreground: white;
+  --footer-background: black;
+}
+
+body {
+  margin: 0;
+}
+
+div.main-content {
+  margin: 8px;
+}
+
+footer.main-footer {
+  color: var(--footer-foreground);
+  background: var(--footer-background);
+  padding: 0 8px;
+  position: -webkit-sticky; /* Safari */
+  position: sticky;
+  bottom: 0;
+}

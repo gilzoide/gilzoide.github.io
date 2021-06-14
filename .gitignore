@@ -130,3 +130,6 @@ temp/
 
 # End of https://www.toptal.com/developers/gitignore/api/node
 
+
+# default website build folder
+docs/

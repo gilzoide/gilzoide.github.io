@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "build": "eleventy --input=src --config=src/.eleventy.js --output=docs",
+    "serve": "eleventy --input=src --config=src/.eleventy.js --output=docs --serve",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
