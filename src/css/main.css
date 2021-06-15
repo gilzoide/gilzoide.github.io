@@ -1,17 +1,50 @@
 :root {
   --footer-foreground: white;
   --footer-background: black;
+  --nav-foreground: white;
+  --nav-background: #333;
+  --nav-hover-background: black;
+  --nav-active-background: #04AA6D;
 }
 
 body {
   margin: 0;
 }
 
-div.main-content {
+.main-nav {
+  position: -webkit-sticky; /* Safari */
+  position: sticky;
+  top: 0;
+}
+.main-nav ul {
+  display: block flex;
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  background-color: var(--nav-background);
+}
+.main-nav li {
+  display: inline flex;
+}
+.main-nav li a {
+  display: block flex;
+  padding: 0.8em 1em;
+  color: var(--nav-foreground);
+  text-decoration: none;
+  text-align: center;
+}
+.main-nav li a:hover {
+  background-color: var(--nav-hover-background);
+}
+.main-nav li a.nav-active {
+  background-color: var(--nav-active-background);
+}
+
+.main-content {
   margin: 8px;
 }
 
-footer.main-footer {
+.main-footer {
   color: var(--footer-foreground);
   background: var(--footer-background);
   padding: 0 8px;

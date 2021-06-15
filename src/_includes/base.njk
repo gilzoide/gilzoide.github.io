@@ -1,5 +1,7 @@
 ---
 title: gilzoide
+nav_items:
+  - ["/", "Home"]
 ---
 <!DOCTYPE html>
 <html>
@@ -11,6 +13,14 @@ title: gilzoide
     <link rel="stylesheet" href="css/main.css" />
   </head>
   <body>
+    <nav class="main-nav">
+      <ul>
+        {%- for item_url, item_title in nav_items %}
+        <li><a {% if page.url == item_url %}class="nav-active"{% endif %} href="{{ item_url }}">{{ item_title }}</a></li>
+        {% endfor -%}
+      </ul>
+    </nav>
+
     <div class="main-content">
       {{ content | safe }}
     </div>
