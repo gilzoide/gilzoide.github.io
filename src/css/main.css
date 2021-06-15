@@ -7,7 +7,11 @@
   --nav-active-background: #04AA6D;
 }
 
+html {
+  height: 100%;
+}
 body {
+  min-height: 100%;
   margin: 0;
 }
 
@@ -48,7 +52,7 @@ body {
   color: var(--footer-foreground);
   background: var(--footer-background);
   padding: 0 8px;
-  position: -webkit-sticky; /* Safari */
-  position: sticky;
+  position: fixed;
   bottom: 0;
+  width: 100%;
 }
