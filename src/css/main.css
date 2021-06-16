@@ -6,7 +6,7 @@
 
   --footer-foreground: #FFFFFFAA;
   --footer-foreground-hover: white;
-  --footer-background: black;
+  --footer-background: #333;
 }
 
 html {
@@ -61,14 +61,16 @@ body {
   width: 100%;
 }
 .main-footer a {
+  display: flex;
+  justify-content: center;
   height: 32px;
-  width: 32px;
+  width: 48px;
 }
 .main-footer svg path {
   fill: var(--footer-foreground);
   transition: all 0.2s linear;
 }
-.main-footer svg:hover path {
+.main-footer a:hover svg path {
   fill: var(--footer-foreground-hover);
   transition: all 0.2s linear;
 }
