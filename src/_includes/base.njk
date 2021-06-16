@@ -1,7 +1,8 @@
 ---
 title: gilzoide
 nav_items:
-  - ["/", "Home"]
+  - ["/", "Work"]
+  - ["/about/", "About"]
 ---
 <!DOCTYPE html>
 <html>
@@ -10,7 +11,8 @@ nav_items:
     <meta name="viewport" content="width=device-witdh, initial-scale=1" />
     <title>{{ title }}</title>
 
-    <link rel="stylesheet" href="css/main.css" />
+    <link rel="stylesheet" href="/css/base.css" />
+    {% block head %}{% endblock %}
   </head>
   <body>
     <nav class="main-nav">
@@ -25,7 +27,7 @@ nav_items:
       {{ content | safe }}
     </div>
 
-    <footer class="main-footer">
+    <footer class="main-footer justify-center">
       <a href="https://github.com/gilzoide/">{% include "GitHub-Mark.svg" %}</a>
       <a href="https://twitter.com/gilzoide">{% include "Twitter-Logo.svg" %}</a>
       <a href="https://www.linkedin.com/in/gilzoide/">{% include "LinkedIn-Logo.svg" %}</a>

@@ -50,9 +50,12 @@ body {
   margin: 8px;
 }
 
-.main-footer {
+.justify-center {
   display: flex;
   justify-content: center;
+}
+
+.main-footer {
   color: var(--footer-foreground);
   background: var(--footer-background);
   padding: 8px;
