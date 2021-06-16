@@ -51,12 +51,18 @@ body {
 }
 
 .main-footer {
+  display: flex;
+  justify-content: center;
   color: var(--footer-foreground);
   background: var(--footer-background);
   padding: 8px;
   position: fixed;
   bottom: 0;
   width: 100%;
+}
+.main-footer a {
+  height: 32px;
+  width: 32px;
 }
 .main-footer svg path {
   fill: var(--footer-foreground);
