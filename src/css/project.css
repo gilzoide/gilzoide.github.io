@@ -1,0 +1,41 @@
+:root {
+  --work-card-width: 240px;
+  --work-card-height: calc(var(--work-card-width) / (16 / 9));
+}
+
+.work-card {
+  width: 100%;
+  height: var(--work-card-height);
+  color: var(--content-foreground);
+}
+.work-card a {
+  color: inherit;
+  text-decoration-line: none;
+}
+.work-card .item {
+  display: flex;
+}
+.work-card .thumbnail {
+  flex: 0 1 var(--work-card-width);
+  height: var(--work-card-height);
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+.work-card .description {
+  flex: 1;
+  display: block;
+  margin: 8px 8px;
+}
+.description h2 {
+  margin: 0;
+}
+
+@media (max-width: 496px) {
+  .work-card {
+    flex-direction: column;
+    height: calc(var(--work-card-height) * 2);
+  }
+  .work-card .thumbnail {
+    flex: 1;
+  }
+}

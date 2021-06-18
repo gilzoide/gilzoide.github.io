@@ -1,5 +1,5 @@
 ---
-title: gilzoide
+css: []
 nav_items:
   - ["/", "Work"]
   - ["/about/", "About"]
@@ -9,17 +9,18 @@ nav_items:
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-witdh, initial-scale=1" />
-    <title>{{ title }}</title>
-
+    <title>{% if title %}{{ title }} - {% endif %}gilzoide</title>
     <link rel="stylesheet" href="/css/base.css" />
-    {% block head %}{% endblock %}
+    {%- for css_url in css %}
+    <link rel="stylesheet" href="{{ css_url }}" />
+    {% endfor -%}
   </head>
   <body>
     <nav class="main-nav">
       <ul>
         {%- for item_url, item_title in nav_items %}
         <li><a {% if page.url == item_url %}class="nav-active"{% endif %} href="{{ item_url }}">{{ item_title }}</a></li>
-        {% endfor -%}
+        {%- endfor -%}
       </ul>
     </nav>
 

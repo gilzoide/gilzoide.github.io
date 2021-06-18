@@ -4,6 +4,8 @@
   --nav-background-hover: black;
   --nav-background-active: #04AA6D;
 
+  --content-foreground: black;
+
   --footer-foreground: #FFFFFFAA;
   --footer-foreground-hover: white;
   --footer-background: #333;
@@ -69,6 +71,7 @@ body {
 .main-footer {
   color: var(--footer-foreground);
   background: var(--footer-background);
+  margin-top: 32px;
   padding: 32px 8px 32px 8px;
   flex-wrap: wrap;
 }

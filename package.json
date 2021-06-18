@@ -21,6 +21,8 @@
   "homepage": "https://github.com/gilzoide/gilzoide.github.io#readme",
   "devDependencies": {
     "@11ty/eleventy": "^0.12.1",
-    "@sherby/eleventy-plugin-files-minifier": "^1.1.1"
+    "html-minifier": "^4.0.0",
+    "js-beautify": "^1.14.0",
+    "nunjucks": "^3.2.3"
   }
 }
