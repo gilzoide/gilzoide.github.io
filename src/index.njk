@@ -4,7 +4,7 @@ css:
   - "/css/project.css"
 ---
 {%- macro project_card(p) %}
-<div class="justify-center work-card" href="{{ p.url }}">
+<div class="justify-center project-card" href="{{ p.url }}">
   {% if p.data.thumbnail %}
   <a class="item thumbnail" href="{{ p.url }}" style="background-image: url('{{ p.data.thumbnail }}')"></a>
   {% endif %}

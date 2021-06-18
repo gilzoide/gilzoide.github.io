@@ -1,33 +1,33 @@
 :root {
-  --work-card-width: 240px;
-  --work-card-height: calc(var(--work-card-width) / (5 / 3));
+  --project-card-width: 240px;
+  --project-card-height: calc(var(--project-card-width) / (5 / 3));
 }
 
-.work-card {
+.project-card {
   width: 100%;
-  height: var(--work-card-height);
+  height: var(--project-card-height);
   color: var(--content-foreground);
   padding-bottom: 8px;
   border-bottom: thin solid var(--content-foreground-separator);
 }
-.work-card a {
+.project-card a {
   color: inherit;
   text-decoration-line: none;
 }
-.work-card .item {
+.project-card .item {
   display: flex;
 }
-.work-card .thumbnail {
-  flex: 0 1 var(--work-card-width);
-  height: var(--work-card-height);
+.project-card .thumbnail {
+  flex: 0 1 var(--project-card-width);
+  height: var(--project-card-height);
   background-repeat: no-repeat;
   background-size: cover;
   border-radius: 6px;
 }
-.work-card .spacing {
+.project-card .spacing {
   flex: 0 0 16px;
 }
-.work-card .description {
+.project-card .description {
   flex: 1;
   display: block;
   margin: 0;
@@ -37,11 +37,11 @@
 }
 
 @media (max-width: 496px) {
-  .work-card {
+  .project-card {
     flex-direction: column;
-    height: calc(var(--work-card-height) * 2);
+    height: calc(var(--project-card-height) * 2);
   }
-  .work-card .thumbnail {
+  .project-card .thumbnail {
     flex: 1;
   }
 }
