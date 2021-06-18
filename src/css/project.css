@@ -1,12 +1,14 @@
 :root {
   --work-card-width: 240px;
-  --work-card-height: calc(var(--work-card-width) / (16 / 9));
+  --work-card-height: calc(var(--work-card-width) / (5 / 3));
 }
 
 .work-card {
   width: 100%;
   height: var(--work-card-height);
   color: var(--content-foreground);
+  padding-bottom: 8px;
+  border-bottom: thin solid var(--content-foreground-separator);
 }
 .work-card a {
   color: inherit;
@@ -20,11 +22,15 @@
   height: var(--work-card-height);
   background-repeat: no-repeat;
   background-size: cover;
+  border-radius: 6px;
+}
+.work-card .spacing {
+  flex: 0 0 16px;
 }
 .work-card .description {
   flex: 1;
   display: block;
-  margin: 8px 8px;
+  margin: 0;
 }
 .description h2 {
   margin: 0;
