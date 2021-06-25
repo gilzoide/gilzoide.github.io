@@ -2,7 +2,7 @@
 layout: base
 css:
   - "/css/project.css"
-permalink: index
+permalink: /
 ---
 {%- macro project_card(p) %}
 <div class="justify-center project-card" href="{{ p.url }}">
@@ -15,7 +15,7 @@ permalink: index
     <span class="tags">
       {%- for tag in p.data.tags -%}
         {%- if tag != "project" %}
-      <a>#{{ tag }}</a>
+      <a class="decorated-link">#{{ tag }}</a>
         {% endif -%}
       {%- endfor -%}
     </span>
@@ -24,6 +24,8 @@ permalink: index
 </div>
 {% endmacro -%}
 
+<div class="justify-center">
 {%- for p in collections.project %}
   {{ project_card(p) }}
 {% endfor -%}
+</div>
