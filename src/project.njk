@@ -7,11 +7,11 @@ permalink: /
 {%- macro project_card(p) %}
 <div class="justify-center project-card" href="{{ p.url }}">
   {% if p.data.thumbnail %}
-  <a class="item thumbnail" href="{{ p.url }}" style="background-image: url('{{ p.data.thumbnail }}')"></a>
+  <a class="item thumbnail" {% if p.content %}href="{{ p.url }}"{% endif %} style="background-image: url('{{ p.data.thumbnail }}')"></a>
   {% endif %}
   <div class="item spacing"></div>
   <div class="item description">
-    <a href="{{ p.url }}"><h2>{{ p.data.title }}</h2></a>
+    <a {% if p.content %}href="{{ p.url }}"{% endif %}><h2>{{ p.data.title }}</h2></a>
     <span class="tags">
       {%- for tag in p.data.tags -%}
         {%- if tag != "project" %}

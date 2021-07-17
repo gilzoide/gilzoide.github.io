@@ -4,6 +4,8 @@ thumbnail: /images/bike-race-thumbnail.jpg
 layout: base
 tags:
   - project
-  - wildlife studios
+  - iOS
+  - Android
+  - Wildlife Studios
 description: A fast-paced physics-based racing game where you drive your bike through tracks with several jumps and loops
 ---

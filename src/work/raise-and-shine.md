@@ -4,5 +4,7 @@ thumbnail: https://raw.githubusercontent.com/gilzoide/raise-and-shine/main/scree
 layout: base
 tags:
   - project
+  - Godot
+  - tools
 description: Height map editor with automatic normal map generation for 2D textures
 ---
