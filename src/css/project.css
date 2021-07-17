@@ -8,8 +8,10 @@
   max-width: calc(var(--project-card-width) * 3.5);
   height: var(--project-card-height);
   color: var(--content-foreground);
-  padding-bottom: 8px;
+  padding-top: 16px;
+  padding-bottom: 16px;
   border-bottom: thin solid var(--content-foreground-separator);
+  align-self: center;
 }
 .project-card a {
   color: inherit;
@@ -25,6 +27,7 @@
   flex: 0 1 var(--project-card-width);
   height: var(--project-card-height);
   background-repeat: no-repeat;
+  background-position: center;
   background-size: cover;
   border-radius: 6px;
 }
