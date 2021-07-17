@@ -7,4 +7,3 @@ tags:
   - wildlife studios
 description: A fast-paced physics-based racing game where you drive your bike through tracks with several jumps and loops
 ---
-All right, bike race!
