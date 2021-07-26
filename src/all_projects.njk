@@ -1,25 +1,28 @@
 ---
 layout: base
 css:
+  - "/css/cards.css"
   - "/css/project.css"
 permalink: /
 ---
 {%- macro project_card(p) %}
-<div class="justify-center project-card" href="{{ p.url }}">
+<div class="justify-center card project-card" href="{{ p.url }}">
   {% if p.data.thumbnail %}
   <a class="item thumbnail" href="{{ p.url }}" style="background-image: url('{{ p.data.thumbnail }}')"></a>
-  {% endif %}
   <div class="item spacing"></div>
+  {% endif %}
   <div class="item description">
-    <a href="{{ p.url }}"><h2>{{ p.data.title }}</h2></a>
-    <span class="tags">
+    <a class="undecorated-link" href="{{ p.url }}"><h2>{{ p.data.title }}</h2></a>
+    <span class="card-meta">
       {%- for tag in p.data.tags -%}
         {%- if tag != "project" %}
-      <a class="decorated-link">#{{ tag }}</a>
+      <a class="decorated-link">{{ tag }}</a>
         {% endif -%}
       {%- endfor -%}
     </span>
-    <p>{{ p.data.description or p.data.title }}</p>
+    <a class="undecorated-link" href="{{ p.url }}">
+      <p>{{ p.data.description or p.data.title }}</p>
+    </a>
   </div>
 </div>
 {% endmacro -%}
