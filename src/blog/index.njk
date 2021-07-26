@@ -4,28 +4,13 @@ layout: base
 css:
   - "/css/cards.css"
 ---
+{% from "article.njk" import article_header, article_meta %}
 {%- macro article_card(p) %}
 <div class="justify-center card flex-column" href="{{ p.url }}">
     <a class="undecorated-link" href="{{ p.url }}">
-      <h2>
-        {{ p.data.title }}
-        {% if p.data.subtitle %}
-          <br />
-          <span class="subtitle">{{ p.data.subtitle }}</span>
-        {% endif %}
-      </h2>
+      {{ article_header(p.data.title, p.data.subtitle) }}
     </a>
-    <span class="card-meta">
-      {{ p.date | datestr }}
-      {% if p.data.tags.length > 1 %}
-        &ensp; | &ensp;
-        {% for tag in p.data.tags %}
-          {%- if tag != "article" %}
-        <a class="decorated-link">{{ tag }}</a>
-          {% endif -%}
-        {% endfor %}
-      {% endif %}
-    </span>
+    {{ article_meta(p.date, p.data.tags) }}
     <a class="undecorated-link" href="{{ p.url }}">
       <p>{{ p.data.description or p.data.title }}</p>
     </a>

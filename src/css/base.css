@@ -109,3 +109,6 @@ a.undecorated-link {
 a.decorated-link {
   text-decoration-line: underline;
 }
+.subtitle {
+  font-size: smaller;
+}

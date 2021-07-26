@@ -11,9 +11,6 @@
   border-bottom: thin solid var(--content-foreground-separator);
   align-self: center;
 }
-.card .subtitle {
-  font-size: smaller;
-}
 
 .card-meta {
   font-size: medium;
