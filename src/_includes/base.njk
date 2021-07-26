@@ -1,5 +1,6 @@
 ---
 css: []
+scripts: []
 nav_items:
   - ["/", "Work"]
   - ["/blog/", "Blog"]
@@ -39,5 +40,9 @@ nav_items:
       <div class="flex-break"></div>
       <p class="main-footer-copyright">Copyright ⓒ 2021 Gil Barbosa Reis</p>
     </footer>
+
+    {%- for script_url in scripts %}
+    <script src="{{ script_url }}"></script>
+    {% endfor -%}
   </body>
 </html>
