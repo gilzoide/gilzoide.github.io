@@ -39,6 +39,7 @@
 html {
   height: 100%;
   font-family: sans-serif;
+  scroll-padding-top: 52px;
 }
 body {
   min-height: 100%;
@@ -52,6 +53,7 @@ body {
 .main-nav {
   position: -webkit-sticky; /* Safari */
   position: sticky;
+  z-index: 1;
   top: 0;
   border-bottom: thin solid var(--content-border);
 }
