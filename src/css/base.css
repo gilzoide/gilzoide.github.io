@@ -2,6 +2,7 @@
   --nav-foreground: #CDD9E5;
   --nav-background: #22272e;
   --nav-background-hover: black;
+  --nav-active-foreground: white;
   --nav-active-background: #04AA6D;
   --content-border: #CDD9E5AA;
 
@@ -75,6 +76,7 @@ body {
   background-color: var(--nav-background-hover);
 }
 .main-nav li a.nav-active {
+  color: var(--nav-active-foreground);
   background-color: var(--nav-active-background);
 }
 
@@ -147,4 +149,10 @@ a.decorated-link {
 }
 .subtitle {
   font-size: smaller;
+}
+
+code {
+  background-color: rgba(99,110,123,0.4);
+  border-radius: 6px;
+  padding: .2em .4em;
 }
