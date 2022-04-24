@@ -1,20 +1,20 @@
 :root {
-  --nav-foreground: #cdd9e5;
+  --nav-foreground: #CDD9E5;
   --nav-background: #22272e;
   --nav-background-hover: black;
-  --nav-background-active: #04AA6D;
-  --content-border: #cdd9e5;
+  --nav-active-background: #04AA6D;
+  --content-border: #CDD9E5AA;
 
-  --content-foreground: #adbac7;
+  --content-foreground: #ADBAC7;
   --content-foreground-separator: #33333344;
   --content-background: #22272e;
 
-  --link-color: #539bf5;
+  --link-color: #539BF5;
   --link-hover-color: gold;
 
   --footer-foreground: #FFFFFFAA;
   --footer-foreground-hover: white;
-  --footer-background: #22272e;
+  --footer-background: #22272E;
 }
 
 /*
@@ -22,7 +22,7 @@
   --nav-foreground: white;
   --nav-background: #333;
   --nav-background-hover: black;
-  --nav-background-active: #04AA6D;
+  --nav-active-background: #04AA6D;
   --content-border: white;
 
   --content-foreground: black;
@@ -75,7 +75,7 @@ body {
   background-color: var(--nav-background-hover);
 }
 .main-nav li a.nav-active {
-  background-color: var(--nav-background-active);
+  background-color: var(--nav-active-background);
 }
 
 .main-content {
