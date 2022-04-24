@@ -3,33 +3,33 @@ layout: base
 css:
   - "/css/cards.css"
 ---
-{%- macro article_header(title, subtitle, tag = "h2") %}
+{%- macro article_header(title, subtitle, tag = "h2") -%}
 <{{ tag }}>
   {{ title }}
-  {% if subtitle %}
+  {%- if subtitle %}
   <br />
   <span class="subtitle">{{ subtitle }}</span>
-  {% endif %}
+  {% endif -%}
 </{{ tag }}>
-{% endmacro -%}
+{%- endmacro -%}
 
-{%- macro article_meta(date, tags) %}
+{%- macro article_meta(date, tags) -%}
 <span class="card-meta">
-  {% if date %}
+  {%- if date %}
   {{ date | datestr }}
-    {% if tags.length > 1 %}
+    {%- if tags.length > 1 %}
     &ensp; | &ensp;
-    {% endif %}
-  {% endif %}
-  {% if tags.length > 1 %}
-    {% for tag in tags %}
+    {%- endif -%}
+  {%- endif -%}
+  {%- if tags.length > 1 %}
+    {%- for tag in tags %}
       {%- if tag != "article" %}
     <a class="decorated-link">{{ tag }}</a>
       {% endif -%}
-    {% endfor %}
-  {% endif %}
+    {% endfor -%}
+  {% endif -%}
 </span>
-{% endmacro -%}
+{%- endmacro -%}
 
 {{ article_header(title, subtitle) }}
 {{ article_meta(date, tags) }}

@@ -5,7 +5,7 @@ css:
   - "/css/cards.css"
 ---
 {% from "article.njk" import article_header, article_meta %}
-{%- macro article_card(p) %}
+{%- macro article_card(p) -%}
 <div class="justify-center card flex-column" href="{{ p.url }}">
     <a class="undecorated-link" href="{{ p.url }}">
       {{ article_header(p.data.title, p.data.subtitle) }}
@@ -15,10 +15,10 @@ css:
       <p>{{ p.data.description or p.data.title }}</p>
     </a>
 </div>
-{% endmacro -%}
+{%- endmacro -%}
 
 <div class="justify-center flex-column">
-{%- for a in collections.article %}
+{%- for a in collections.article -%}
   {{ article_card(a) }}
-{% endfor -%}
+{%- endfor -%}
 </div>
