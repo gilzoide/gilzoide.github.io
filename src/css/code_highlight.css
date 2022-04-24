@@ -1,3 +1,6 @@
+.hljs {
+  border: solid thin var(--content-border);
+}
 .hljs-ln-n {
   border-right: solid thin;
   margin-right: 1em;
