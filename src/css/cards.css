@@ -6,8 +6,10 @@
   width: 100%;
   padding-top: 16px;
   padding-bottom: 16px;
-  border-bottom: thin solid var(--content-foreground-separator);
   align-self: center;
+}
+.card:not(:first-child) {
+  border-top: thin solid var(--content-foreground-separator);
 }
 
 .card-meta {
