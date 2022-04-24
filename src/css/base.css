@@ -7,11 +7,11 @@
   --content-border: #CDD9E5AA;
 
   --content-foreground: #ADBAC7;
-  --content-foreground-separator: #33333344;
+  --content-foreground-separator: #CDD9E566;
   --content-background: #22272e;
 
-  --link-color: #539BF5;
-  --link-hover-color: gold;
+  --link-color: gold;
+  --link-hover-color: yellow;
 
   --footer-foreground: #FFFFFFAA;
   --footer-foreground-hover: white;
