@@ -20,9 +20,11 @@
   },
   "homepage": "https://github.com/gilzoide/gilzoide.github.io#readme",
   "devDependencies": {
-    "@11ty/eleventy": "^0.12.1",
+    "@11ty/eleventy": "^1.0.1",
     "html-minifier": "^4.0.0",
     "js-beautify": "^1.14.0",
+    "markdown-it": "^13.0.0",
+    "markdown-it-anchor": "^8.6.2",
     "nunjucks": "^3.2.3"
   }
 }
