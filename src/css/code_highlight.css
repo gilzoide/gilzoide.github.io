@@ -1,5 +1,6 @@
 .hljs {
   border: solid thin var(--content-border);
+  font-size: larger;
 }
 .hljs-ln-n {
   border-right: solid thin;

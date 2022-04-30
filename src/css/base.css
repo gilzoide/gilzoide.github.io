@@ -84,6 +84,7 @@ body {
 
 .main-content {
   margin: 8px;
+  line-height: 1.5;
 }
 
 .justify-center {
@@ -157,5 +158,6 @@ a.decorated-link {
 code {
   background-color: rgba(99,110,123,0.4);
   border-radius: 6px;
-  padding: .2em .4em;
+  padding: 0 .4em;
+  font-size: larger;
 }
