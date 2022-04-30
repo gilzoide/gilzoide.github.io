@@ -1,11 +1,11 @@
-{%- macro card_header(title, subtitle, tag = "h2") -%}
-<{{ tag }}>
+{%- macro card_header(title, subtitle) -%}
+<h2 class="card-title">
   {{ title }}
   {%- if subtitle %}
   <br />
-  <span class="subtitle">{{ subtitle }}</span>
+  <h3 class="card-subtitle">{{ subtitle }}</h3>
   {% endif -%}
-</{{ tag }}>
+</h2>
 {%- endmacro -%}
 
 {%- macro card_meta(date, tags, url) -%}

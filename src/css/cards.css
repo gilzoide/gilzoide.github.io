@@ -49,7 +49,7 @@
   flex-direction: column;
   margin: 0;
 }
-.description h2 {
+.description .card-title {
   margin: 0;
 }
 .description p {
