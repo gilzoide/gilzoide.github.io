@@ -1,0 +1,9 @@
+---
+layout: base
+css:
+  - /css/cards.css
+---
+{% from "card.njk" import card_header, card_meta %}
+{{ card_header(title, subtitle) }}
+{{ card_meta(date, tags) }}
+{{ content | safe }}
