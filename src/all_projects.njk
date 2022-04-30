@@ -5,27 +5,28 @@ css:
   - "/css/project.css"
 permalink: /
 ---
-{%- macro project_card(p) %}
+{%- macro project_card(p) -%}
 <div class="justify-center card project-card" href="{{ p.url }}">
-  {% if p.data.thumbnail %}
+  {%- if p.data.thumbnail %}
   <a class="item thumbnail" href="{{ p.url }}" style="background-image: url('{{ p.data.thumbnail }}')"></a>
   <div class="item spacing"></div>
-  {% endif %}
+  {% endif -%}
   <div class="item description">
     <a class="undecorated-link" href="{{ p.url }}"><h2>{{ p.data.title }}</h2></a>
     <span class="card-meta">
       {%- for tag in p.data.tags -%}
         {%- if tag != "project" %}
-      <a class="decorated-link">{{ tag }}</a>
-        {% endif -%}
-      {%- endfor -%}
+      <a class="decorated-link card-tag">{{ tag }}</a>
+        {%- endif -%}
+      {%- endfor %}
+      <a class="flex-stretch" href="{{ p.url }}"></a>
     </span>
     <a class="undecorated-link" href="{{ p.url }}">
       <p>{{ p.data.description or p.data.title }}</p>
     </a>
   </div>
 </div>
-{% endmacro -%}
+{%- endmacro -%}
 
 <div class="justify-center flex-column">
 {%- for p in collections.project | sort(true, false, 'date') %}

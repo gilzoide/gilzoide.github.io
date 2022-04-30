@@ -14,4 +14,9 @@
 
 .card-meta {
   font-size: medium;
+  display: flex;
+  flex-direction: row;
+}
+.card-meta .card-tag:not(:first-child) {
+  margin-left: 1ch;
 }

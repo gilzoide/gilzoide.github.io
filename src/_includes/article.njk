@@ -13,20 +13,28 @@ css:
 </{{ tag }}>
 {%- endmacro -%}
 
-{%- macro article_meta(date, tags) -%}
+{%- macro article_meta(date, tags, url) -%}
 <span class="card-meta">
   {%- if date %}
-  {{ date | datestr }}
-    {%- if tags.length > 1 %}
-    &ensp; | &ensp;
-    {%- endif -%}
+    {%- if url %}
+  <a class="undecorated-link" href="{{ url }}">
+    {% endif -%}
+  {{ date | datestr }} {%- if tags.length > 1 %}&ensp; | &ensp;{%- endif -%}
+    {%- if url %}
+  </a>
+    {% endif -%}
   {%- endif -%}
   {%- if tags.length > 1 %}
+  <div>
     {%- for tag in tags %}
       {%- if tag != "article" %}
-    <a class="decorated-link">{{ tag }}</a>
+    <a class="decorated-link card-tag">{{ tag }}</a>
       {% endif -%}
     {% endfor -%}
+  </div>
+  {% endif -%}
+  {%- if url %}
+  <a class="flex-stretch" href="{{ url }}"></a>
   {% endif -%}
 </span>
 {%- endmacro -%}
