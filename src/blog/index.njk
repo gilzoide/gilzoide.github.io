@@ -18,7 +18,9 @@ css:
 {%- endmacro -%}
 
 <div class="justify-center flex-column">
-{%- for a in collections.article -%}
+{%- for a in collections.article | sort(true, false, 'date') -%}
+  {%- if not a.data.ignore -%}
   {{ article_card(a) }}
+  {%- endif %}
 {%- endfor -%}
 </div>

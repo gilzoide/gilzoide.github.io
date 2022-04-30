@@ -2,6 +2,7 @@
 title: Raise and Shine
 thumbnail: https://raw.githubusercontent.com/gilzoide/raise-and-shine/main/screenshots/hi.gif
 layout: base
+date: 2021-04-03
 tags:
   - project
   - Godot

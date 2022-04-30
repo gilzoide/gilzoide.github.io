@@ -28,7 +28,9 @@ permalink: /
 {% endmacro -%}
 
 <div class="justify-center flex-column">
-{%- for p in collections.project %}
+{%- for p in collections.project | sort(true, false, 'date') %}
+  {%- if not p.data.ignore -%}
   {{ project_card(p) }}
-{% endfor -%}
+  {%- endif -%}
+{%- endfor -%}
 </div>
