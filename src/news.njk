@@ -4,3 +4,11 @@ css:
   - /css/cards.css
 permalink: /
 ---
+{% from "card.njk" import card %}
+<div class="justify-center flex-column">
+{%- for a in collections.news | reverse -%}
+  {%- if not a.data.ignore -%}
+  {{ card(a) }}
+  {%- endif %}
+{%- endfor -%}
+</div>

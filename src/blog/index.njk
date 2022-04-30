@@ -6,7 +6,7 @@ css:
 ---
 {% from "card.njk" import card %}
 <div class="justify-center flex-column">
-{%- for a in collections.article | sort(true, false, 'date') -%}
+{%- for a in collections.article | reverse -%}
   {%- if not a.data.ignore -%}
   {{ card(a) }}
   {%- endif %}

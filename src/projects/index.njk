@@ -1,11 +1,12 @@
 ---
+title: Projects
 layout: base
 css:
   - /css/cards.css
 ---
 {% from "card.njk" import card %}
 <div class="justify-center flex-column">
-{%- for p in collections.project | sort(true, false, 'date') %}
+{%- for p in collections.project | reverse %}
   {%- if not p.data.ignore -%}
   {{ card(p, false) }}
   {%- endif -%}
