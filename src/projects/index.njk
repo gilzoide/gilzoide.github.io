@@ -1,5 +1,4 @@
 ---
-title: Blog
 layout: base
 css:
   - "/css/cards.css"
@@ -7,9 +6,9 @@ css:
 ---
 {% from "card.njk" import card %}
 <div class="justify-center flex-column">
-{%- for a in collections.article | sort(true, false, 'date') -%}
-  {%- if not a.data.ignore -%}
-  {{ card(a) }}
-  {%- endif %}
+{%- for p in collections.project | sort(true, false, 'date') %}
+  {%- if not p.data.ignore -%}
+  {{ card(p, false) }}
+  {%- endif -%}
 {%- endfor -%}
 </div>
