@@ -1,14 +1,14 @@
 ---
-title: Projects
 layout: base
 css:
   - /css/cards.css
+permalink: /
 ---
 {% from "card.njk" import card %}
 <div class="justify-center flex-column">
-{%- for p in collections.project | reverse %}
-  {%- if not p.data.ignore -%}
-  {{ card(p, false) }}
-  {%- endif -%}
+{%- for a in collections.article | reverse -%}
+  {%- if not a.data.ignore -%}
+  {{ card(a) }}
+  {%- endif %}
 {%- endfor -%}
 </div>
