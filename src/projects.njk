@@ -7,6 +7,8 @@ css:
 {% from "card.njk" import card %}
 <div class="justify-center flex-column">
 {%- for p in projects %}
+  {%- if not p.data.ignore -%}
   {{ card(p, false) }}
+  {%- endif %}
 {%- endfor -%}
 </div>
