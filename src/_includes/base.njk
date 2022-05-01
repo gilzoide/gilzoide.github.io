@@ -7,6 +7,29 @@ nav_items:
   - ["/projects/", "Projects"]
   - ["/about/", "About"]
 ---
+{%- macro setup_highlight_css(languages) -%}
+  {%- if languages.length > 0 -%}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/github-dark-dimmed.min.css" integrity="sha512-zcatBMvxa7rT7dDklfjauWsfiSFParF+hRfCdf4Zr40/MmA1gkFcBRbop0zMpvYF3FmznYFgcL8wlcuO/GwHoA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.css" />
+    <link rel="stylesheet" href="/css/code_highlight.css" />
+  {%- endif -%}
+{%- endmacro -%}
+
+{%- macro setup_highlight_scripts(languages) -%}
+  {%- if languages.length > 0 %}
+    <script src="/lib/highlight.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.8.0/highlightjs-line-numbers.min.js"></script>
+    <script src="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.js"></script>
+    {%- for lang in languages -%}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/languages/{{ lang }}.min.js"></script>
+    {%- endfor -%}
+    <script>
+      hljs.addPlugin(new CopyButtonPlugin());
+      hljs.highlightAll()
+      hljs.initLineNumbersOnLoad()
+    </script>
+  {%- endif -%}
+{%- endmacro -%}
 <!DOCTYPE html>
 <html>
   <head>
@@ -18,11 +41,7 @@ nav_items:
     {%- for css_url in css -%}
     <link rel="stylesheet" href="{{ css_url }}" />
     {%- endfor -%}
-    {%- if highlight_languages.length > 0 -%}
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/github-dark-dimmed.min.css" integrity="sha512-zcatBMvxa7rT7dDklfjauWsfiSFParF+hRfCdf4Zr40/MmA1gkFcBRbop0zMpvYF3FmznYFgcL8wlcuO/GwHoA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <link rel="stylesheet" href="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.css" />
-    <link rel="stylesheet" href="/css/code_highlight.css" />
-    {%- endif -%}
+    {{ setup_highlight_css(highlight_languages) }}
   </head>
   <body>
     <nav class="main-nav">
@@ -47,19 +66,7 @@ nav_items:
       <p class="main-footer-copyright">Copyright ⓒ 2022 Gil Barbosa Reis</p>
     </footer>
 
-    {%- if highlight_languages.length > 0 %}
-    <script src="/lib/highlight.min.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.8.0/highlightjs-line-numbers.min.js"></script>
-    <script src="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.js"></script>
-      {%- for lang in highlight_languages -%}
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/languages/{{ lang }}.min.js"></script>
-      {%- endfor -%}
-      <script>
-        hljs.addPlugin(new CopyButtonPlugin());
-        hljs.highlightAll()
-        hljs.initLineNumbersOnLoad()
-      </script>
-    {%- endif -%}
+    {{ setup_highlight_scripts(highlight_languages) }}
     {%- for script_url in scripts -%}
     <script src="{{ script_url }}"></script>
     {%- endfor -%}
