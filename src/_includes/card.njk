@@ -14,14 +14,14 @@
     {%- if url %}
   <a class="undecorated-link" href="{{ url }}">
     {% endif -%}
-  {{ date | datestr }} {%- if tags.length > 1 %}&ensp; | &ensp;{%- endif -%}
+  {{ date | datestr }} {%- if tags.length > 0 %}&ensp; | &ensp;{%- endif -%}
     {%- if url %}
   </a>
     {% endif -%}
   {%- endif -%}
-  {%- if tags.length > 1 %}
+  {%- if tags.length > 0 %}
   <div>
-    {%- for tag in tags %}
+    {% for tag in tags -%}
     <a class="decorated-link card-tag">{{ tag }}</a>
     {% endfor -%}
   </div>
