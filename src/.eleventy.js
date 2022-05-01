@@ -2,6 +2,7 @@ const beautify_html = require('js-beautify').html
 const mdIt = require('markdown-it')
 const mdItAnchor = require('markdown-it-anchor')
 
+// helper functions
 function haveAnyCommonValues(arr, values) {
   if (!arr || !values) {
     return false
@@ -16,6 +17,7 @@ function haveAnyCommonValues(arr, values) {
   return false
 }
 
+// setup functions
 function setupMarkdownIt(eleventyConfig) {
   let md = mdIt({
     html: true,
@@ -41,6 +43,10 @@ function setupHtmlBeautifier(eleventyConfig) {
 function setupNunjucksFilters(eleventyConfig) {
   eleventyConfig.addNunjucksFilter("datestr", function(date) {
     return date.toISOString().split('T')[0]
+  })
+  eleventyConfig.addNunjucksFilter("exclude", function(arr, ...args) {
+    let exclude_values = args[0] instanceof Array ? args[0] : args
+    return exclude_values ? arr.filter(item => !exclude_values.includes(item)) : arr
   })
 }
 

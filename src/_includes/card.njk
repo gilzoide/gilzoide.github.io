@@ -22,9 +22,7 @@
   {%- if tags.length > 1 %}
   <div>
     {%- for tag in tags %}
-      {%- if tag != "article" %}
     <a class="decorated-link card-tag">{{ tag }}</a>
-      {% endif -%}
     {% endfor -%}
   </div>
   {% endif -%}
@@ -34,7 +32,7 @@
 </span>
 {%- endmacro -%}
 
-{%- macro card(p, show_date = true) -%}
+{%- macro card(p, show_date = true, ignore_tags = []) -%}
 <div class="justify-center card">
   {%- if p.data.thumbnail %}
   <a class="item thumbnail" href="{{ p.url }}" style="background-image: url('{{ p.data.thumbnail }}')"></a>
@@ -44,7 +42,7 @@
     <a class="undecorated-link" href="{{ p.url }}">
       {{ card_header(p.data.title, p.data.subtitle) }}
     </a>
-    {{ card_meta(show_date and p.data.date or "", p.data.tags, p.url) }}
+    {{ card_meta(show_date and p.data.date or "", p.data.tags | exclude(ignore_tags), p.url) }}
     <a class="undecorated-link" href="{{ p.url }}">
       <p>{{ p.data.description or p.data.title }}</p>
     </a>
