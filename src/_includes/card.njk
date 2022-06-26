@@ -12,7 +12,7 @@
 <span class="card-meta">
   {%- if date %}
     {%- if url %}
-  <a class="undecorated-link" href="{{ url }}">
+  <a class="undecorated-link" href="{{ url | url }}">
     {% endif -%}
   {{ date | datestr }} {%- if tags.length > 0 %}&ensp; | &ensp;{%- endif -%}
     {%- if url %}
@@ -27,7 +27,7 @@
   </div>
   {% endif -%}
   {%- if url %}
-  <a class="flex-stretch" href="{{ url }}"></a>
+  <a class="flex-stretch" href="{{ url | url }}"></a>
   {% endif -%}
 </span>
 {%- endmacro -%}
@@ -35,15 +35,15 @@
 {%- macro card(p, show_date = true, ignore_tags = []) -%}
 <div class="justify-center card">
   {%- if p.data.thumbnail %}
-  <a class="item thumbnail" href="{{ p.url }}" style="background-image: url('{{ p.data.thumbnail }}')"></a>
+  <a class="item thumbnail" href="{{ p.url | url }}" style="background-image: url('{{ p.data.thumbnail }}')"></a>
   <div class="item spacing"></div>
   {% endif -%}
   <div class="item description">
-    <a class="undecorated-link" href="{{ p.url }}">
+    <a class="undecorated-link" href="{{ p.url | url }}">
       {{ card_header(p.data.title, p.data.subtitle) }}
     </a>
     {{ card_meta(show_date and p.data.date or "", p.data.tags | exclude(ignore_tags), p.url) }}
-    <a class="undecorated-link" href="{{ p.url }}">
+    <a class="undecorated-link" href="{{ p.url | url }}">
       <p>{{ p.data.description or p.data.title }}</p>
     </a>
   </div>
