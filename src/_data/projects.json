@@ -1,6 +1,16 @@
 [
   {
     "data": {
+      "title": "Baiacu",
+      "thumbnail": "https://raw.githubusercontent.com/gilzoide/gogodotjam1/main/extras/cover.gif",
+      "date": "2021-06-01",
+      "tags": ["Godot", "game", "GoGodotJam"],
+      "description": "🐡 Help the blowfish survive the most by inflating and deflating it using pinch gestures or your mouse wheel 🐡"
+    },
+    "url": "https://gilzoide.itch.io/baiacu"
+  },
+  {
+    "data": {
       "title": "Draw Over",
       "thumbnail": "https://raw.githubusercontent.com/gilzoide/draw-over/main/screenshots/demo.gif",
       "date": "2021-05-24",
@@ -28,5 +38,15 @@
       "description": "Docking/tiling UI panels Container addon for Godot"
     },
     "url": "https://github.com/gilzoide/godot-dockable-container/"
+  },
+  {
+    "data": {
+      "title": "Super Rolling Cat",
+      "thumbnail": "https://img.itch.zone/aW1hZ2UvNzUxOTA3LzQxOTg1NjcucG5n/original/RRN8r%2F.png",
+      "date": "2020-09-06",
+      "tags": ["Unity", "game", "3D", "GBJAM 8"],
+      "description": "😸 Roll the ball to help the Cat collect fish and reach the finish line as fast as you can! Can you do it? 😼"
+    },
+    "url": "https://celestefournier.itch.io/super-rolling-cat"
   }
 ]
