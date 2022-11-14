@@ -40,18 +40,18 @@ meta_description:
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-witdh, initial-scale=1" />
     <title>
-      {% if title_key %}
+      {% if title_key -%}
         {{ title_key | i18n }} -
-      {% elif title %}
+      {% elif title -%}
         {{ title }} -
-      {% endif %}
+      {% endif -%}
       gilzoide
     </title>
     {% if meta_description %}<meta name="description" content="{{ meta_description }}" />{% endif -%}
     <link rel="icon" href="{{ "/images/about-picture.jpg" | url }}" type="image/jpeg" />
-    {% for link in page | all_locale_links %}
+    {%- for link in page | all_locale_links %}
       <link rel="alternate" hreflang="{{ link.lang }}" href="{{ link.url }}" />
-    {% endfor %}
+    {% endfor -%}
     <link rel="stylesheet" href="{{ "/css/base.css" | url }}" />
     {%- for css_url in css -%}
       <link rel="stylesheet" href="{{ css_url | url }}" />
@@ -62,17 +62,17 @@ meta_description:
     <nav class="main-nav">
       <ul>
         {%- for item_url, item_title in nav_items -%}
-        <li><a class="nav-text{% if page.url == item_url %} nav-active{% endif %}" href="{{ item_url | locale_url }}">{{ item_title | i18n }}</a></li>
+        <li><a class="nav-text{% if page.url == item_url | locale_url %} nav-active{% endif %}" href="{{ item_url | locale_url }}">{{ item_title | i18n }}</a></li>
         {%- endfor -%}
         <li class="flex-stretch" />
         <li class="dropdown-button">
-          <a class="nav-icon">
-            {% include "fluent-mdl2_locale-language.svg" %}
+          <a class="nav-icon" href="#">
+            {%- include "fluent-mdl2_locale-language.svg" -%}
           </a>
           <div class="dropdown">
-            {% for link in page | all_locale_links %}
-              <a class="nav-text{% if link.active %} nav-active{% endif %}" href="{{ link.url }}" lang="{{ link.lang }}" hreflang="{{ link.lang }}">{{ link.label }}</a>
-            {% endfor %}
+            {%- for link in page | all_locale_links %}
+              <a class="nav-text{% if link.active %} nav-active{% endif %}" href="{{ "#" if link.active else link.url }}" lang="{{ link.lang }}" hreflang="{{ link.lang }}">{{ link.label }}</a>
+            {% endfor -%}
           </div>
         </li>
       </ul>
