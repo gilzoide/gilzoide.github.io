@@ -86,13 +86,9 @@ body {
   color: var(--nav-active-foreground);
   background-color: var(--nav-active-background);
 }
-.main-nav li svg {
+.main-nav li img {
   height: 1.8em;
   width: auto;
-}
-.main-nav svg path {
-  fill: var(--nav-foreground);
-  transition: all 0.2s linear;
 }
 
 .dropdown {
@@ -144,16 +140,12 @@ body {
   height: 28px;
   width: 44px;
 }
-.main-footer svg {
-  height: 28px;
-  width: 28px;
-}
-.main-footer svg path {
-  fill: var(--footer-foreground);
+.main-footer img {
+  opacity: 0.625;
   transition: all 0.2s linear;
 }
-.main-footer a:hover svg path {
-  fill: var(--footer-foreground-hover);
+.main-footer a:hover img {
+  opacity: 1;
   transition: all 0.2s linear;
 }
 .main-footer-copyright {

@@ -47,7 +47,9 @@ meta_description:
       {% endif -%}
       gilzoide
     </title>
-    {% if meta_description %}<meta name="description" content="{{ meta_description }}" />{% endif -%}
+    {%- if meta_description %}
+      <meta name="description" content="{{ meta_description }}" />
+    {% endif -%}
     <link rel="icon" href="{{ "/images/about-picture.jpg" | url }}" type="image/jpeg" />
     {%- for link in page | all_locale_links %}
       <link rel="alternate" hreflang="{{ link.lang }}" href="{{ link.url }}" />
@@ -62,12 +64,12 @@ meta_description:
     <nav class="main-nav">
       <ul>
         {%- for item_url, item_title in nav_items -%}
-        <li><a class="nav-text{% if page.url == item_url | locale_url %} nav-active{% endif %}" href="{{ item_url | locale_url }}">{{ item_title | i18n }}</a></li>
+          <li><a class="nav-text{% if page.url == item_url | locale_url %} nav-active{% endif %}" href="{{ item_url | locale_url }}">{{ item_title | i18n }}</a></li>
         {%- endfor -%}
         <li class="flex-stretch" />
         <li class="dropdown-button">
           <a class="nav-icon" href="#">
-            {%- include "fluent-mdl2_locale-language.svg" -%}
+            <img src="{{ "/images/locale-language.png" | url }}" />
           </a>
           <div class="dropdown">
             {%- for link in page | all_locale_links %}
@@ -85,9 +87,15 @@ meta_description:
     <div class="flex-stretch"></div>
 
     <footer class="main-footer justify-center">
-      <a href="https://github.com/gilzoide/">{% include "GitHub-Mark.svg" %}</a>
-      <a href="https://twitter.com/gilzoide">{% include "Twitter-Logo.svg" %}</a>
-      <a href="https://www.linkedin.com/in/gilzoide/">{% include "LinkedIn-Logo.svg" %}</a>
+      <a href="https://github.com/gilzoide/">
+        <img src={{ "/images/github.png" | url }} />
+      </a>
+      <a href="https://twitter.com/gilzoide">
+        <img src={{ "/images/twitter.png" | url }} />
+      </a>
+      <a href="https://www.linkedin.com/in/gilzoide/">
+        <img src={{ "/images/linkedin.png" | url }} />
+      </a>
       <div class="flex-break"></div>
       <p class="main-footer-copyright">Copyright ⓒ 2022 Gil Barbosa Reis</p>
     </footer>
