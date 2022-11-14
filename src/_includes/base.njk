@@ -68,12 +68,12 @@ meta_description:
         {%- endfor -%}
         <li class="flex-stretch" />
         <li class="dropdown-button">
-          <a class="nav-icon" href="#">
+          <button class="nav-icon">
             <img src="{{ "/images/locale-language.png" | url }}" />
-          </a>
+          </button>
           <div class="dropdown">
             {%- for link in page | all_locale_links %}
-              <a class="nav-text{% if link.active %} nav-active{% endif %}" href="{{ "#" if link.active else link.url }}" lang="{{ link.lang }}" hreflang="{{ link.lang }}">{{ link.label }}</a>
+              <a class="nav-text{% if link.active %} nav-active{% endif %}" href="{{ "" if link.active else link.url }}" lang="{{ link.lang }}" hreflang="{{ link.lang }}">{{ link.label }}</a>
             {% endfor -%}
           </div>
         </li>

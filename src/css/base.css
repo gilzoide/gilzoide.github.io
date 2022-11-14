@@ -73,16 +73,18 @@ body {
   text-decoration: none;
   text-align: center;
 }
-.main-nav li .nav-text {
+.main-nav .nav-text {
   padding: 0.8em 1em;
 }
-.main-nav li .nav-icon {
+.main-nav .nav-icon {
   padding: 0.6em 0.8em;
+  background-color: inherit;
+  border: inherit;
 }
-.main-nav li a:hover {
+.main-nav a:hover, .main-nav button:hover {
   background-color: var(--nav-background-hover);
 }
-.main-nav li a.nav-active {
+.main-nav .nav-active, .main-nav .nav-active:hover {
   color: var(--nav-active-foreground);
   background-color: var(--nav-active-background);
 }
