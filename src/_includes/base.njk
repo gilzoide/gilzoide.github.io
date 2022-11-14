@@ -49,9 +49,12 @@ meta_description:
     </title>
     {% if meta_description %}<meta name="description" content="{{ meta_description }}" />{% endif -%}
     <link rel="icon" href="{{ "/images/about-picture.jpg" | url }}" type="image/jpeg" />
+    {% for link in page | all_locale_links %}
+      <link rel="alternate" hreflang="{{ link.lang }}" href="{{ link.url }}" />
+    {% endfor %}
     <link rel="stylesheet" href="{{ "/css/base.css" | url }}" />
     {%- for css_url in css -%}
-    <link rel="stylesheet" href="{{ css_url | url }}" />
+      <link rel="stylesheet" href="{{ css_url | url }}" />
     {%- endfor -%}
     {{ setup_highlight_css(highlight_languages) }}
   </head>
@@ -67,9 +70,8 @@ meta_description:
             {% include "fluent-mdl2_locale-language.svg" %}
           </a>
           <div class="dropdown">
-            <a class="nav-text nav-active" lang="{{ page.lang }}" hreflang="{{ page.lang }}">{{ "LanguageName" | i18n({}, page.lang) }}</a>
-            {% for link in page.url | locale_links %}
-              <a class="nav-text" href="{{ link.url }}" lang="{{ link.lang }}" hreflang="{{ link.lang }}">{{ link.label }}</a>
+            {% for link in page | all_locale_links %}
+              <a class="nav-text{% if link.active %} nav-active{% endif %}" href="{{ link.url }}" lang="{{ link.lang }}" hreflang="{{ link.lang }}">{{ link.label }}</a>
             {% endfor %}
           </div>
         </li>

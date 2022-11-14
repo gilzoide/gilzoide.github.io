@@ -80,6 +80,19 @@ function setupI18n(eleventyConfig) {
   eleventyConfig.addPlugin(EleventyI18nPlugin, {
     defaultLanguage: "en",
   })
+  eleventyConfig.addFilter("all_locale_links", function(page) {
+    let links = [
+      {
+        url: page.url,
+        lang: page.lang,
+        label: translations.LanguageName[page.lang],
+        active: true,
+      },
+      ...eleventyConfig.javascriptFunctions["locale_links"](page.url)
+    ]
+    links.sort((a, b) => a.lang.localeCompare(b.lang))
+    return links
+  })
   eleventyConfig.addPlugin(i18n, {
     translations,
     fallbackLocales: {
