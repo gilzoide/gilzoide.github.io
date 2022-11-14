@@ -14,7 +14,7 @@
       "title": "Draw Over",
       "thumbnail": "https://raw.githubusercontent.com/gilzoide/draw-over/main/screenshots/demo.gif",
       "date": "2021-05-24",
-      "tags": ["Godot", "tools"],
+      "tags": ["Godot", "app"],
       "description": "Drawing application with support for transparent background, working both as a drawing board or on-screen annotation tool"
     },
     "url": "https://gilzoide.itch.io/draw-over"
@@ -24,7 +24,7 @@
       "title": "Raise and Shine",
       "thumbnail": "https://raw.githubusercontent.com/gilzoide/raise-and-shine/main/screenshots/hi.gif",
       "date": "2021-04-03",
-      "tags": ["Godot", "tools"],
+      "tags": ["Godot", "app"],
       "description": "Height map editor with automatic normal map generation for 2D textures"
     },
     "url": "https://gilzoide.itch.io/raise-and-shine"
@@ -34,7 +34,7 @@
       "title": "Dockable Container",
       "thumbnail": "https://raw.githubusercontent.com/gilzoide/godot-dockable-container/main/screenshots/video1.gif",
       "date": "2021-04-12",
-      "tags": ["Godot", "tools"],
+      "tags": ["Godot", "package"],
       "description": "Docking/tiling UI panels Container addon for Godot"
     },
     "url": "https://github.com/gilzoide/godot-dockable-container/"

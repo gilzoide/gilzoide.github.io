@@ -4,14 +4,12 @@ layout: base
 css:
   - /css/cards.css
 permalink: /
-ignore_tags:
-  - article
 ---
 {% from "card.njk" import card %}
 <div class="justify-center flex-column">
 {%- for a in collections.article | reverse -%}
   {%- if not a.data.ignore -%}
-  {{ card(a, true, ignore_tags) }}
+  {{ card(a, page.lang, true, "article") }}
   {%- endif %}
 {%- endfor -%}
 </div>

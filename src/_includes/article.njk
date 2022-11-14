@@ -5,5 +5,5 @@ css:
 ---
 {% from "card.njk" import card_header, card_meta %}
 {{ card_header(title, subtitle) }}
-{{ card_meta(date, tags) }}
+{{ card_meta(date, tags | exclude("article")) }}
 {{ content | safe }}

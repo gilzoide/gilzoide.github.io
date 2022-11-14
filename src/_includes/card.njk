@@ -2,8 +2,8 @@
 <h2 class="card-title">
   {{ title }}
   {%- if subtitle %}
-  <br />
-  <h3 class="card-subtitle">{{ subtitle }}</h3>
+    <br />
+    <h3 class="card-subtitle">{{ subtitle }}</h3>
   {% endif -%}
 </h2>
 {%- endmacro -%}
@@ -32,7 +32,7 @@
 </span>
 {%- endmacro -%}
 
-{%- macro card(p, show_date = true, ignore_tags = []) -%}
+{%- macro card(p, language, show_date = true, ignore_tags = []) -%}
 <div class="justify-center card">
   {%- if p.data.thumbnail %}
   <a class="item thumbnail" href="{{ p.url | url }}" style="background-image: url('{{ p.data.thumbnail }}')"></a>
@@ -44,7 +44,7 @@
     </a>
     {{ card_meta(show_date and p.data.date or "", p.data.tags | exclude(ignore_tags), p.url) }}
     <a class="undecorated-link" href="{{ p.url | url }}">
-      <p>{{ p.data.description or p.data.title }}</p>
+      <p>{{ p.data.description[language] or p.data.description["en"] or p.data.description or p.data.title }}</p>
     </a>
   </div>
 </div>
