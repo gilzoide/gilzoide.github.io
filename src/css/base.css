@@ -95,6 +95,20 @@ body {
   transition: all 0.2s linear;
 }
 
+.dropdown {
+  display: none;
+  position: absolute;
+  z-index: 1;
+  border: 1px solid var(--content-border);
+  background-color: var(--nav-background);
+  top: 100%;
+  right: 0;
+  left: auto;
+}
+.dropdown.expand {
+  display: block;
+}
+
 .main-content {
   margin: 8px;
   line-height: 1.5;

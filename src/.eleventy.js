@@ -61,9 +61,10 @@ function setupFilters(eleventyConfig) {
 }
 
 function setupPassthroughFolders(eleventyConfig) {
-  eleventyConfig.addPassthroughCopy("src/lib")
   eleventyConfig.addPassthroughCopy("src/css")
   eleventyConfig.addPassthroughCopy("src/images")
+  eleventyConfig.addPassthroughCopy("src/js")
+  eleventyConfig.addPassthroughCopy("src/lib")
 }
 
 function setupAdditionalCollections(eleventyConfig) {

@@ -11,4 +11,8 @@ module.exports = {
     en: "Projects",
     pt: "Projetos",
   },
+  LanguageName: {
+    en: "English",
+    pt: "Português",
+  },
 }

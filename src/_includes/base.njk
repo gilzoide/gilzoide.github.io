@@ -21,7 +21,7 @@ meta_description:
 {%- macro setup_highlight_scripts(languages) -%}
   {%- if languages.length > 0 %}
     <script src="/lib/highlight.min.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.8.0/highlightjs-line-numbers.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.8.0/highlightjs-line-numbers.min.js"></script>
     <script src="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.js"></script>
     {%- for lang in languages -%}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/languages/{{ lang }}.min.js"></script>
@@ -62,7 +62,17 @@ meta_description:
         <li><a class="nav-text{% if page.url == item_url %} nav-active{% endif %}" href="{{ item_url | locale_url }}">{{ item_title | i18n }}</a></li>
         {%- endfor -%}
         <li class="flex-stretch" />
-        <li><a class="nav-icon">{% include "fluent-mdl2_locale-language.svg" %}</a></li>
+        <li class="dropdown-button">
+          <a class="nav-icon">
+            {% include "fluent-mdl2_locale-language.svg" %}
+          </a>
+          <div class="dropdown">
+            <a class="nav-text nav-active" lang="{{ page.lang }}" hreflang="{{ page.lang }}">{{ "LanguageName" | i18n({}, page.lang) }}</a>
+            {% for link in page.url | locale_links %}
+              <a class="nav-text" href="{{ link.url }}" lang="{{ link.lang }}" hreflang="{{ link.lang }}">{{ link.label }}</a>
+            {% endfor %}
+          </div>
+        </li>
       </ul>
     </nav>
 
@@ -84,5 +94,6 @@ meta_description:
     {%- for script_url in scripts -%}
     <script src="{{ script_url | url }}"></script>
     {%- endfor -%}
+    <script src="{{ "/js/dropdown.js" | url }}"></script>
   </body>
 </html>
