@@ -3,10 +3,11 @@ css: []
 highlight_languages: []
 scripts: []
 title:
+title_key:
 nav_items:
   - ["/", "Blog"]
   - ["/projects/", "Projects"]
-  - ["/about/", "About"]
+  # - ["/about/", "About"]
 meta_description:
 ---
 {%- macro setup_highlight_css(languages) -%}
@@ -34,11 +35,18 @@ meta_description:
 {%- endmacro -%}
 
 <!DOCTYPE html>
-<html>
+<html {% if locale %}lang="{{ locale }}"{% endif %} {% if direction %}dir="{{ direction }}"{% endif %}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-witdh, initial-scale=1" />
-    <title>{% if title %}{{ title }} - {% endif %}gilzoide</title>
+    <title>
+      {% if title_key %}
+        {{ title_key | i18n }} -
+      {% elif title %}
+        {{ title }} -
+      {% endif %}
+      gilzoide
+    </title>
     {% if meta_description %}<meta name="description" content="{{ meta_description }}" />{% endif -%}
     <link rel="icon" href="{{ "/images/about-picture.jpg" | url }}" type="image/jpeg" />
     <link rel="stylesheet" href="{{ "/css/base.css" | url }}" />
@@ -51,8 +59,10 @@ meta_description:
     <nav class="main-nav">
       <ul>
         {%- for item_url, item_title in nav_items -%}
-        <li><a {% if page.url == item_url %}class="nav-active"{% endif -%} href="{{ item_url | url }}">{{ item_title }}</a></li>
+        <li><a class="nav-text{% if page.url == item_url %} nav-active{% endif %}" href="{{ item_url | locale_url }}">{{ item_title | i18n }}</a></li>
         {%- endfor -%}
+        <li class="flex-stretch" />
+        <li><a class="nav-icon">{% include "fluent-mdl2_locale-language.svg" %}</a></li>
       </ul>
     </nav>
 

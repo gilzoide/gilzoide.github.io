@@ -69,10 +69,15 @@ body {
 }
 .main-nav li a {
   display: block flex;
-  padding: 0.8em 1em;
   color: var(--nav-foreground);
   text-decoration: none;
   text-align: center;
+}
+.main-nav li .nav-text {
+  padding: 0.8em 1em;
+}
+.main-nav li .nav-icon {
+  padding: 0.6em 0.8em;
 }
 .main-nav li a:hover {
   background-color: var(--nav-background-hover);
@@ -80,6 +85,14 @@ body {
 .main-nav li a.nav-active {
   color: var(--nav-active-foreground);
   background-color: var(--nav-active-background);
+}
+.main-nav li svg {
+  height: 1.8em;
+  width: auto;
+}
+.main-nav svg path {
+  fill: var(--nav-foreground);
+  transition: all 0.2s linear;
 }
 
 .main-content {

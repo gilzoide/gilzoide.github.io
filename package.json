@@ -2,11 +2,9 @@
   "name": "gilzoide.github.io",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
   "scripts": {
     "build": "eleventy --input=src --config=src/.eleventy.js --output=docs",
-    "serve": "eleventy --input=src --config=src/.eleventy.js --output=docs --serve",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "serve": "eleventy --input=src --config=src/.eleventy.js --output=docs --serve"
   },
   "repository": {
     "type": "git",
@@ -20,7 +18,8 @@
   },
   "homepage": "https://github.com/gilzoide/gilzoide.github.io#readme",
   "devDependencies": {
-    "@11ty/eleventy": "^1.0.1",
+    "@11ty/eleventy": "^2.0.0-canary.16",
+    "eleventy-plugin-i18n": "^0.1.3",
     "html-minifier": "^4.0.0",
     "js-beautify": "^1.14.0",
     "markdown-it": "^13.0.0",

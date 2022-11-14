@@ -1,6 +1,11 @@
+const { EleventyI18nPlugin } = require("@11ty/eleventy")
+const i18n = require('eleventy-plugin-i18n')
 const beautify_html = require('js-beautify').html
 const mdIt = require('markdown-it')
 const mdItAnchor = require('markdown-it-anchor')
+const translations = require('./_data/i18n')
+
+const htmlCommentRegex = /<!--.*?-->/s
 
 // helper functions
 function haveAnyCommonValues(arr, values) {
@@ -17,6 +22,10 @@ function haveAnyCommonValues(arr, values) {
   return false
 }
 
+function removeHtmlComments(text) {
+  return text.replace(htmlCommentRegex, "")
+}
+
 // setup functions
 function setupMarkdownIt(eleventyConfig) {
   let md = mdIt({
@@ -31,6 +40,7 @@ function setupMarkdownIt(eleventyConfig) {
 function setupHtmlBeautifier(eleventyConfig) {
   eleventyConfig.addTransform("processHTML", function(content, outputPath) {
     if (outputPath && outputPath.endsWith(".html")) {
+      content = removeHtmlComments(content)
       return beautify_html(content, {
         indent_size: 2,
         editorconfig: true,
@@ -40,11 +50,11 @@ function setupHtmlBeautifier(eleventyConfig) {
   })
 }
 
-function setupNunjucksFilters(eleventyConfig) {
-  eleventyConfig.addNunjucksFilter("datestr", function(date) {
+function setupFilters(eleventyConfig) {
+  eleventyConfig.addFilter("datestr", function(date) {
     return date.toISOString().split('T')[0]
   })
-  eleventyConfig.addNunjucksFilter("exclude", function(arr, ...args) {
+  eleventyConfig.addFilter("exclude", function(arr, ...args) {
     let exclude_values = args[0] instanceof Array ? args[0] : args
     return exclude_values ? arr.filter(item => !exclude_values.includes(item)) : arr
   })
@@ -62,13 +72,32 @@ function setupAdditionalCollections(eleventyConfig) {
     return collectionApi.getSortedByDate().filter(item => {
       return haveAnyCommonValues(item.data.tags, tags)
     })
-  });
+  })
+}
+
+function setupI18n(eleventyConfig) {
+  eleventyConfig.addPlugin(EleventyI18nPlugin, {
+    defaultLanguage: "en",
+  })
+  eleventyConfig.addPlugin(i18n, {
+    translations,
+    fallbackLocales: {
+      '*': 'en'
+    }
+  })
 }
 
 module.exports = function(eleventyConfig) {
-  setupNunjucksFilters(eleventyConfig)
+  setupFilters(eleventyConfig)
   setupMarkdownIt(eleventyConfig)
   setupHtmlBeautifier(eleventyConfig)
   setupPassthroughFolders(eleventyConfig)
   setupAdditionalCollections(eleventyConfig)
+  setupI18n(eleventyConfig)
+
+  return {
+    dir: {
+      output: "docs",
+    }
+  }
 }
