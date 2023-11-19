@@ -8,6 +8,13 @@ nav_items:
   - ["/", "Blog"]
   - ["/about/", "About"]
 meta_description:
+footer_links:
+  - name: GitHub
+    icon: /images/github.png
+    url: https://github.com/gilzoide/
+  - name: LinkedIn
+    icon: /images/linkedin.png
+    url: https://www.linkedin.com/in/gilzoide/
 ---
 {%- macro setup_highlight_css(languages) -%}
   {%- if languages.length > 0 -%}
@@ -86,15 +93,11 @@ meta_description:
     <div class="flex-stretch"></div>
 
     <footer class="main-footer justify-center">
-      <a href="https://github.com/gilzoide/">
-        <img src={{ "/images/github.png" | url }} alt="GitHub" />
-      </a>
-      <a href="https://twitter.com/gilzoide">
-        <img src={{ "/images/twitter.png" | url }} alt="Twitter" />
-      </a>
-      <a href="https://www.linkedin.com/in/gilzoide/">
-        <img src={{ "/images/linkedin.png" | url }} alt="Linkedin" />
-      </a>
+      {%- for footer_link in footer_links -%}
+        <a href="{{ footer_link.url }}">
+          <img src="{{ footer_link.icon | url }}" alt="{{ footer_link.name }}" />
+        </a>
+      {%- endfor -%}
       <div class="flex-break"></div>
       <p class="main-footer-copyright">Copyright ⓒ 2023 Gil Barbosa Reis</p>
     </footer>
