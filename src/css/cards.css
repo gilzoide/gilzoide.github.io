@@ -49,8 +49,11 @@
   flex-direction: column;
   margin: 0;
 }
-.description .card-title {
+.card-title {
   margin: 0;
+}
+.card-subtitle {
+  margin: 4px 0 8px 0;
 }
 .description p {
   margin-bottom: 0;
