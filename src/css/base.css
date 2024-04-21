@@ -188,7 +188,7 @@ a.header-anchor:hover::after {
 blockquote {
   margin-inline-start: 8px;
   padding-left: 8px;
-  border-left: solid 3px var(--content-foreground);
+  border-left: solid medium var(--content-foreground);
   backdrop-filter: brightness(85%);
 }
 
