@@ -172,6 +172,15 @@ a.undecorated-link {
 a.decorated-link {
   text-decoration-line: underline;
 }
+a.header-anchor {
+  color: inherit;
+  text-decoration-line: none;
+  display: block;
+  width: 100%;
+}
+a.header-anchor:hover::after {
+  content: " 🔗";
+}
 .subtitle {
   font-size: smaller;
 }
