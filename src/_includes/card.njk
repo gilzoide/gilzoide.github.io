@@ -43,9 +43,12 @@
       {{ card_header(p.data.title, p.data.subtitle) }}
     </a>
     {{ card_meta(show_date and p.data.date or "", p.data.tags | exclude(ignore_tags), p.url) }}
+    {% set description = p.data.description[language] or p.data.description["en"] or p.data.description %}
+    {% if description %}
     <a class="undecorated-link" href="{{ p.url | url }}">
-      <p>{{ p.data.description[language] or p.data.description["en"] or p.data.description or p.data.title }}</p>
+      <p>{{ description }}</p>
     </a>
+    {% endif %}
   </div>
 </div>
 {%- endmacro -%}
