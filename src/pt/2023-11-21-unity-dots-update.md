@@ -10,9 +10,9 @@ description: Como usar o Job System da Unity para executar métodos Update todo 
 date: 2023-11-21
 highlight_languages:
   - csharp
+originally_published_at: https://github.com/gilzoide/unity-update-manager/blob/main/Extras~/article-update-dots-pt.md
 ---
 
-> Originalmente publicado em https://github.com/gilzoide/unity-update-manager/blob/main/Extras~/article-update-dots-pt.md
 
 [DOTS](https://unity.com/dots) - a Stack de Tecnologias Orientadas a Dados da Unity - é uma combinação de tecnologias que nos permite construir jogos com uma arquitetura orientada a dados.
 Quando usada corretamente, os dados podem ser processados com alta performance, se beneficiando de execução paralela, compilação de C# para código nativo altamente otimizado usando o compilador [Burst](https://docs.unity3d.com/Packages/com.unity.burst@latest?subfolder=/manual/index.html), e muito mais.
@@ -194,7 +194,7 @@ Note que é necessário escrever `BurstUpdateTransformJob<SegueEmFrenteJob>` no 
 ## Outras funcionalidades maneiras
 O pacote Update Manager também possui outras funcionalidades bacanas relacionadas a DOTS/Jobs:
 - Qualquer classe de C# pode ser atualizada usando Jobs, não precisa herdar de MonoBehaviour.
-  Implemente `IJobUpdatable` ou `ITransformJobUpdatable`, comece a rodar updates com `this.RegisterInManaget()` e pronto.
+  Implemente `IJobUpdatable` ou `ITransformJobUpdatable`, comece a rodar updates com `this.RegisterInManager()` e pronto.
   Não esqueça de parar a execução dos updates usando `this.UnregisterInManager()` quando necessário.
 - É possível criar Jobs sem um `TransformAccess`, basta implementar `IUpdateJob` ao invés de `IUpdateTransformJob`.
 - É possível definir dependências entre Jobs, de modo que um Job somente é executado após o outro terminar.

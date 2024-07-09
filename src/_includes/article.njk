@@ -6,4 +6,9 @@ css:
 {% from "card.njk" import card_header, card_meta %}
 {{ card_header(title, subtitle) }}
 {{ card_meta(date, tags | exclude("article")) }}
+{% if originally_published_at %}
+  <blockquote>
+    <p>{{ "OriginallyPublishedAt" | i18n }} <a href="{{ originally_published_at }}">{{ originally_published_at }}</a></p>
+  </blockquote>
+{% endif %}
 {{ content | safe }}

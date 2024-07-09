@@ -10,9 +10,8 @@ description: How to use Unity's C# Job System to run Update methods every frame 
 date: 2023-11-21
 highlight_languages:
   - csharp
+originally_published_at: https://github.com/gilzoide/unity-update-manager/blob/main/Extras~/article-update-dots.md
 ---
-
-> Originally published at https://github.com/gilzoide/unity-update-manager/blob/main/Extras~/article-update-dots.md
 
 [DOTS](https://unity.com/dots) - Unity's Data-Oriented Technology Stack - is a combination of technologies that enables building games with a data-oriented approach.
 When used correctly, processing can be scaled in a highly performant manner, taking advantage of parallelized computations, compilation from C# to highly optimized native code using the [Burst](https://docs.unity3d.com/Packages/com.unity.burst@latest?subfolder=/manual/index.html) compiler, and more.

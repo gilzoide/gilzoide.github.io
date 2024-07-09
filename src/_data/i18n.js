@@ -15,4 +15,8 @@ module.exports = {
     en: "English",
     pt: "Português",
   },
+  OriginallyPublishedAt: {
+    en: "Originally published at",
+    pt: "Originalmente publicado em",
+  },
 }
