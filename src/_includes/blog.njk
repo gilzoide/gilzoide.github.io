@@ -7,7 +7,7 @@ permalink: /
 {% from "card.njk" import card %}
 <div class="justify-center flex-column">
 {%- for a in collections.article | reverse -%}
-  {%- if page.lang in a.url and not a.data.ignore -%}
+  {%- if a.url.startsWith('/' + page.lang) and not a.data.ignore -%}
   {{ card(a, page.lang, true, "article") }}
   {%- endif %}
 {%- endfor -%}
