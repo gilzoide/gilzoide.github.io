@@ -72,7 +72,6 @@ footer_links:
         {%- for item_url, item_title in nav_items -%}
           <li><a class="nav-text{% if page.url == item_url | locale_url %} nav-active{% endif %}" href="{{ item_url | locale_url }}">{{ item_title | i18n }}</a></li>
         {%- endfor -%}
-        <li class="flex-stretch" />
         <li class="dropdown-button">
           <button class="nav-icon">
             <img src="{{ "/images/locale-language.png" | url }}" />

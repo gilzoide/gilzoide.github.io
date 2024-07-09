@@ -100,7 +100,7 @@ body {
   border: 1px solid var(--content-border);
   background-color: var(--nav-background);
   top: 100%;
-  right: 0;
+  right: auto;
   left: auto;
 }
 .dropdown.expand {
