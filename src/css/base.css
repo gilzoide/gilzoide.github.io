@@ -200,3 +200,7 @@ code {
   padding: 0 .4em;
   font-size: larger;
 }
+
+hr.thin {
+  border: solid 0.1px var(--content-border);
+}
