@@ -10,6 +10,7 @@ date: 2024-11-01
 highlight_languages:
   - sql
 originally_published_at: https://github.com/gilzoide/ecsql/blob/main/articles/01-ecs-databases-pt.md
+collection: ecsql
 ---
 
 > Nota: esse documento assume que você tenha conhecimentos básicos de SQL
@@ -129,5 +130,5 @@ Para isso, basta trocarmos o `JOIN` por `LEFT JOIN` ou `RIGHT JOIN`, de modo que
 ## Conclusão
 Vimos uma breve introdução ao padrão de projeto ECS e como mundos ECS podem ser modelados usando bases de dado relacionais e SQL.
 
-No próximo artigo, começaremos a implementar nosso *framework* experimental **ECSQL**.
+No [próximo artigo](../2024-12-15-ecsql-prototyping), começaremos a implementar nosso *framework* experimental **ECSQL**.
 Vejo vocês lá!

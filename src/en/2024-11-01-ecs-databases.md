@@ -10,6 +10,7 @@ date: 2024-11-01
 highlight_languages:
   - sql
 originally_published_at: https://github.com/gilzoide/ecsql/blob/main/articles/01-ecs-databases-en.md
+collection: ecsql
 ---
 
 > Note: this document assumes you have basic knowledge of SQL
@@ -129,5 +130,5 @@ This can be done by simply changing the `JOIN` by a `LEFT JOIN` or `RIGHT JOIN`,
 ## Conclusion
 We've seen briefly what ECS is and how ECS worlds can be modeled as SQL databases.
 
-In the next article, we'll start implementing our experimental **ECSQL** framework.
+In the [next article](../2024-12-15-ecsql-prototyping), we'll start implementing our experimental **ECSQL** framework.
 See you there!
