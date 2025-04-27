@@ -99,7 +99,7 @@ ecsql::System DrawPointSystem {
 Hook Systems use [SQLite preupdate hooks](https://www.sqlite.org/c3ref/preupdate_blobwrite.html) and are called when rows are inserted/updated/deleted.
 They are used to bridge SQL data with native data, so that native data can be created/updated/deleted whenever their corresponding SQL rows do.
 
-> I've written more about how I connect SQL data with C++ data [here](05-flyweight-resources-en.md)
+> I've written more about how I connect SQL data with C++ data [here](../2025-02-09-ecsql-flyweight-resources)
 
 Example:
 ```cpp

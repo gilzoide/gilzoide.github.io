@@ -99,6 +99,8 @@ ecsql::System SistemaDesenhaPonto {
 Esses sistemas usam [ganchos de *preupdate* do SQLite](https://www.sqlite.org/c3ref/preupdate_blobwrite.html) e são chamados quando componentes são inseridos/atualizados/apagados.
 Eles são usados como ponte entre dados do SQL e dados nativos, de modo que dados nativos podem ser criados/atualizados/apagados junto com os dados de SQL correspondentes.
 
+> Eu escrevi mais sobre como conectar dados do SQL e dados de C++ [aqui](../2025-02-09-ecsql-flyweight-resources)
+
 Exemplo:
 ```cpp
 ecsql::HookSystem GanchoPosition {
