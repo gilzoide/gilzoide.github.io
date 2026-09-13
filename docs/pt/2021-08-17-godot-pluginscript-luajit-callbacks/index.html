@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="pt" dir="ltr">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-witdh, initial-scale=1" />
+  <title>
+    Implementando Godot Lua PluginScript: LuaJIT e FFI -
+    gilzoide
+  </title>
+  <link rel="icon" href="/images/about-picture.jpg" type="image/jpeg" />
+  <link rel="alternate" hreflang="en" href="/en/2021-08-17-godot-pluginscript-luajit-callbacks/" />
+
+  <link rel="alternate" hreflang="pt" href="/pt/2021-08-17-godot-pluginscript-luajit-callbacks/" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/cards.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/styles/github-dark-dimmed.min.css" integrity="sha512-zcatBMvxa7rT7dDklfjauWsfiSFParF+hRfCdf4Zr40/MmA1gkFcBRbop0zMpvYF3FmznYFgcL8wlcuO/GwHoA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.css" />
+  <link rel="stylesheet" href="/css/code_highlight.css" />
+</head>
+
+<body>
+  <nav class="main-nav">
+    <ul>
+      <li><a class="nav-text" href="/pt/">Blog</a></li>
+      <li><a class="nav-text" href="/pt/about/">Sobre</a></li>
+      <li class="dropdown-button">
+        <button class="nav-icon">
+          <img src="/images/locale-language.png" />
+        </button>
+        <div class="dropdown">
+          <a class="nav-text" href="/en/2021-08-17-godot-pluginscript-luajit-callbacks/" lang="en" hreflang="en">English</a>
+
+          <a class="nav-text nav-active" href="" lang="pt" hreflang="pt">Português</a>
+        </div>
+      </li>
+    </ul>
+  </nav>
+
+  <div class="justify-center">
+    <div class="main-content">
+
+      <h2 class="card-title">
+        Implementando Godot Lua PluginScript: LuaJIT e FFI</h2>
+      <span class="card-meta">2021-08-17&ensp; | &ensp;
+        <div>
+          <a class="decorated-link card-tag">Godot</a>
+          <a class="decorated-link card-tag">LuaJIT</a>
+          <a class="decorated-link card-tag">FFI</a>
+          <a class="decorated-link card-tag">GDNative</a>
+          <a class="decorated-link card-tag">PluginScript</a>
+        </div>
+      </span>
+
+      <blockquote>
+        <p>Originalmente publicado em <a href="https://github.com/gilzoide/godot-lua-pluginscript/blob/main/extras/articles/3-luajit-callbacks-pt.md">https://github.com/gilzoide/godot-lua-pluginscript/blob/main/extras/articles/3-luajit-callbacks-pt.md</a></p>
+      </blockquote>
+
+      <p>Da última vez, <a href="../2021-08-04-godot-pluginscript-infrastructure">implementamos o esqueleto da nossa biblioteca GDNative + PluginScript</a>.
+        Hoje começaremos a integrar Lua no projeto e a implementar os <em>callbacks</em>.</p>
+      <p>Para podermos usar as definições de GDNative em Lua, temos duas opções:
+        implementar <em>wrappers</em> para tudo com a <a href="https://www.lua.org/manual/5.2/pt/manual.html#4">API Lua/C</a>
+        ou usar declarações direto de C via <a href="https://luajit.org/ext_ffi.html">FFI</a>
+        do <a href="https://luajit.org/">LuaJIT</a> ou alguma outra implementação de FFI
+        como <a href="https://github.com/q66/cffi-lua">cffi-lua</a>.</p>
+      <p>Mesmo que seja fácil por si só criar <em>wrappers</em> pra Lua, tarefa
+        facilitada ainda por bibliotecas como <a href="https://github.com/Rapptz/sol">Sol</a>
+        e geradores automáticos como <a href="http://swig.org/">SWIG</a>, usar a FFI é
+        ainda mais simples: basta copiar/colar definições dos arquivos de
+        cabeçalho e as definições estão disponíveis para serem usadas!
+        Além do mais, como LuaJIT é mais rápido que a implementação padrão de
+        Lua, o que é ótimo para aplicações de tempo real como jogos, usarei
+        LuaJIT + FFI para a primeira implementação do nosso <em>plugin</em>.</p>
+      <h2 id="integrando-luajit" tabindex="-1"><a class="header-anchor" href="#integrando-luajit">Integrando LuaJIT</a></h2>
+      <p>Primeira coisa: vamos adicionar LuaJIT à construção do projeto.
+        Convenientemente, <a href="https://xmake.io">xmake</a> já sabe como fazer isso,
+        basta que a gente peça do jeito certo.
+        No arquivo <code>xmake.lua</code>, requerimos o pacote <code>luajit</code> e o adicionamos
+        como dependência do alvo (no inglês <em>target</em>):</p>
+      <pre><code class="language-lua">-- xmake.lua
+add_requires(&quot;luajit&quot;, {
+    -- Força xmake a baixar e construir LuaJIT do zero,
+    -- ao invés de procurar por uma versão instalada no sistema
+    system = false,
+    -- Liga o modo GC64 do LuaJIT, permitindo o uso de toda a memória
+    -- disponível em sistemas de 64-bits, necessário também para
+    -- plugarmos funções de gerenciamento de memória customizados na
+    -- VM de Lua para esses sistemas
+    config = {
+        gc64 = true,
+    },
+})
+
+target(&quot;lua_pluginscript&quot;)
+    -- ...
+    -- Adiciona &quot;luajit&quot; como dependência
+    add_packages(&quot;luajit&quot;)
+target_end()
+</code></pre>
+      <p>Rode o comando <code>xmake</code>. Ele vai pedir uma confirmação para instalar o
+        pacote <code>luajit</code> em seu <em>cache</em>:</p>
+      <pre><code>note: install or modify (m) these packages (pass -y to skip confirm)?
+in xmake-repo:
+  -&gt; luajit 2.1.0-beta3 [gc64:y]
+please input: y (y/n/m)
+</code></pre>
+      <p>Confirme com a tecla <code>enter</code>, ou <code>y</code> e <code>enter</code> e LuaJIT será baixado
+        e contruído pra sua plataforma.</p>
+      <pre><code>  =&gt; download http://luajit.org/download/LuaJIT-2.1.0-beta3.tar.gz .. ok
+  =&gt; install luajit 2.1.0-beta3 .. ok
+[100%]: build ok!
+</code></pre>
+      <p>Ok, agora implementamos os dois primeiros <em>callbacks</em>: inicialização e
+        finalização da linguagem.
+        Pra fazer isso, incluímos os cabeçalhos de Lua em <code>src/language_gdnative.c</code>
+        e inicializamos/finalizamos o <code>lua_State</code>:</p>
+      <pre><code class="language-c">// src/language_gdnative.c
+#include &quot;lua.h&quot;
+#include &quot;lualib.h&quot;
+#include &quot;lauxlib.h&quot;
+
+// Função lua_Alloc: https://www.lua.org/manual/5.2/pt/manual.html#lua_Alloc
+// Usa `hgdn_free` e `hgdn_realloc` pra que o gerenciamento de memória
+// passe por Godot e o uso de memória seja acompanhado em builds de debug
+void *lps_alloc(void *userdata, void *ptr, size_t osize, size_t nsize) {
+    if (nsize == 0) {
+        hgdn_free(ptr);
+        return NULL;
+    }
+    else {
+        return hgdn_realloc(ptr, nsize);
+    }
+}
+
+// Chamada quando o ambiente de execução da linguagem for inicializado
+godot_pluginscript_language_data *lps_language_init() {
+    lua_State *L = lua_newstate(&amp;lps_alloc, NULL);
+    luaL_openlibs(L);  // Carrega bibliotecas padrão de Lua
+    // TODO: rodar o script de inicialização usando FFI
+    return L;
+}
+
+// Chamada quando o ambiente de execução da linguagem for finalizado
+void lps_language_finish(godot_pluginscript_language_data *data) {
+    lua_close((lua_State *) data);
+}
+</code></pre>
+      <h2 id="embutindo-o-script-de-inicializa%C3%A7%C3%A3o" tabindex="-1"><a class="header-anchor" href="#embutindo-o-script-de-inicializa%C3%A7%C3%A3o">Embutindo o <em>script</em> de inicialização</a></h2>
+      <p>Até aqui tudo bem. Agora, temos que chamar código Lua para inicializar a
+        FFI e implementar os outros <em>callbacks</em> lá.
+        Podemos escrever arquivos separados e carregá-los ou embutir o código
+        diretamente em C e compilá-lo junto com nossa biblioteca dinâmica.
+        Usar arquivos separados é bem melhor pra editar e ler, além de manter
+        o projeto organizado.
+        Por outro lado, embutir o código facilita muito seu carregamento e
+        execução, já que não precisamos preocupar com o caminho dos arquivos.
+        Já que podemos escolher, escolheremos ambos: podemos escrever um ou mais
+        arquivos, daí gerar o código C que define nosso <em>script</em> de
+        inicialização e compilá-lo junto com a biblioteca.</p>
+      <p>Pra testar isso, vamos construir um programa olá mundo em Lua:</p>
+      <pre><code class="language-lua">-- src/ffi.lua
+print &quot;Olá mundo da Lua! \\o/&quot;
+</code></pre>
+      <p>O arquivo C precisa declarar uma constante global contendo o código, pra
+        que possamos rodá-lo na função <code>lps_language_init</code>, com uma <em>string</em>
+        literal, então aspas e contrabarras precisam ser escapadas.
+        A tradução do nosso olá mundo fica tipo assim:</p>
+      <pre><code class="language-c">const char LUA_INIT_SCRIPT[] =
+&quot;-- src/ffi.lua\n&quot;
+&quot;print \&quot;Olá mundo da Lua! \\\\o/\&quot;\n&quot;
+;
+</code></pre>
+      <p>Pra criar o arquivo C de um ou mais arquivos, vamos juntar todos eles,
+        escapar aspas e contrabarras do conteúdo, adicionar aspas para cada
+        linha e por último adicionar a definição de <code>LUA_INIT_SCRIPT</code>.
+        Usarei o comando <a href="https://pt.wikipedia.org/wiki/Cat_%28Unix%29">cat</a>
+        pra concatenar os arquivos e o comando <a href="https://pt.wikipedia.org/wiki/Sed">sed</a>
+        pro resto.
+        Um jeito de fazer isso acontecer em <code>xmake</code> é criando uma <a href="https://xmake.io/#/manual/custom_rule">regra
+          customizada</a>
+        e aplicá-la no nosso alvo:</p>
+      <pre><code class="language-lua">-- xmake.lua
+add_requires(&quot;luajit&quot;, {
+    -- ...
+})
+
+rule(&quot;generate_init_script&quot;)
+    -- A regra &quot;generate_init_script&quot; constrói um arquivo objeto
+    set_kind(&quot;object&quot;)
+    on_buildcmd_files(function(target, batchcmds, sourcebatch, opt)
+        -- Caminho pro script Lua gerado: `build/init_script.lua`
+        local full_script_path = vformat(&quot;$(buildir)/init_script.lua&quot;)
+        -- Caminho pro arquivo C com o script Lua embutido:`build/init_script.c`
+        local script_c_path = vformat(&quot;$(buildir)/init_script.c&quot;)
+        -- É assim que adicionamos um arquivo objeto em um alvo em xmake
+        local script_obj_path = target:objectfile(script_c_path)
+        table.insert(target:objectfiles(), script_obj_path)
+
+        batchcmds:show_progress(opt.progress, &quot;${color.build.object}embed.lua (%s)&quot;, table.concat(sourcebatch.sourcefiles, ', '))
+        -- Executa `cat src/*.lua &gt; build/init_script.lua`
+        batchcmds:execv(&quot;cat&quot;, sourcebatch.sourcefiles, { stdout = full_script_path })
+        -- Executa `sed -e ↓SCRIPT_SED_ABAIXO↓ build/init_script.lua &gt; build/init_script.c`
+        batchcmds:execv(&quot;sed&quot;, { &quot;-e&quot;, [[
+        # Escapa contrabarras
+        # (`s` substitui conteúdo, `g` significa trocar todas as ocorrências na linha)
+        s/\\/\\\\/g
+        # Escapa aspas
+        s/&quot;/\\&quot;/g
+        # Adiciona aspas iniciais
+        # (`^` significa o começo da linha)
+        s/^/&quot;/
+        # Adiciona fim de linha e aspas finais
+        # (`$` significa o fim da linha)
+        s/$/\\n&quot;/
+        # Adiciona as linhas de declaração em C:
+        # (`i` insere uma linha antes de `1`, a primeira linha)
+        1 i const char LUA_INIT_SCRIPT[] =
+        # (`a` adiciona uma linha depois de `$`, a última linha)
+        $ a ;
+        ]], full_script_path }, { stdout = script_c_path })
+        -- Finalmente, compila o arquivo C gerado
+        batchcmds:compile(script_c_path, script_obj_path)
+        -- Isto informa xmake pra somente reconstruir o arquivo
+        -- objeto quando os arquivos Lua forem modificados
+        batchcmds:add_depfiles(sourcebatch.sourcefiles)
+        batchcmds:set_depmtime(os.mtime(script_obj_path))
+    end)
+rule_end()
+
+target(&quot;lua_pluginscript&quot;)
+    -- ...
+    add_files(&quot;src/ffi.lua&quot;, { rule = &quot;generate_init_script&quot; })
+target_end()
+</code></pre>
+      <p>Agora tudo o que precisamos fazer é executar o código definido em
+        <code>const char LUA_INIT_SCRIPT[]</code>:
+      </p>
+      <pre><code class="language-c">extern const char LUA_INIT_SCRIPT[];
+
+// Chamada quando o ambiente de execução da linguagem for inicializado
+godot_pluginscript_language_data *lps_language_init() {
+    lua_State *L = lua_newstate(&amp;lps_alloc, NULL);
+    luaL_openlibs(L);  // Load core Lua libraries
+    if (luaL_dostring(L, LUA_INIT_SCRIPT) != LUA_OK) {
+        const char *error_msg = lua_tostring(L, -1);
+        HGDN_PRINT_ERROR(&quot;Erro ao executar script de inicialização: %s&quot;, error_msg);
+    }
+    return L;
+}
+</code></pre>
+      <p>Reconstrua o projeto com <code>xmake</code> e reabra Godot de um terminal e a
+        mensagem <code>Olá mundo da Lua! \o/</code> deve aparecer!</p>
+      <pre><code>Godot Engine v3.3.2.stable.arch_linux - https://godotengine.org
+
+Olá mundo da Lua! \o/
+</code></pre>
+      <h2 id="usando-gdnative-de-lua%3A-ffi" tabindex="-1"><a class="header-anchor" href="#usando-gdnative-de-lua%3A-ffi">Usando GDNative de Lua: FFI</a></h2>
+      <p>Antes de começarmos a escrever os <em>callbacks</em> do nosso <em>PluginScript</em>,
+        precisamos de uma maneira de chamar funções de GDNative a partir do
+        código Lua.
+        É aqui que entra a FFI.
+        Bora modificar o arquivo <code>src/ffi.lua</code> com as definições:</p>
+      <pre><code class="language-lua">-- src/ffi.lua
+-- Arquivo completo em: https://github.com/gilzoide/godot-lua-pluginscript/blob/blog-3-luajit-callbacks/src/ffi.lua
+local ffi = require 'ffi'
+
+ffi.cdef[[
+// Aqui dentro colamos as definições de C que precisarmos
+// Não vou escrever tudo agora, porque é muuuita coisa
+// Um link pro arquivo completo está listado acima
+
+// Definições de tipos da API GDNative
+typedef bool godot_bool;
+typedef int godot_int;
+typedef float godot_real;
+
+typedef struct godot_object {
+    uint8_t _dont_touch_that[0];
+} godot_object;
+typedef struct godot_string {
+    uint8_t _dont_touch_that[sizeof(void *)];
+} godot_string;
+// ...
+
+// Enums
+typedef enum godot_error {
+    GODOT_OK,
+    GODOT_FAILED,
+    // ...
+} godot_error;
+// ...
+
+// API base
+typedef struct godot_gdnative_api_version {
+    unsigned int major;
+    unsigned int minor;
+} godot_gdnative_api_version;
+
+typedef struct godot_gdnative_api_struct {
+    unsigned int type;
+    godot_gdnative_api_version version;
+    const struct godot_gdnative_api_struct *next;
+} godot_gdnative_api_struct;
+
+typedef struct godot_gdnative_core_api_struct {
+    unsigned int type;
+    godot_gdnative_api_version version;
+    const godot_gdnative_api_struct *next;
+    unsigned int num_extensions;
+    const godot_gdnative_api_struct **extensions;
+    void (*godot_color_new_rgba)(godot_color *r_dest, const godot_real p_r, const godot_real p_g, const godot_real p_b, const godot_real p_a);
+    void (*godot_color_new_rgb)(godot_color *r_dest, const godot_real p_r, const godot_real p_g, const godot_real p_b);
+    godot_real (*godot_color_get_r)(const godot_color *p_self);
+    // ...
+} godot_gdnative_core_api_struct;
+// ...
+
+// Ponteiros globais pra API
+const godot_gdnative_core_api_struct *hgdn_core_api;
+]]
+
+-- `hgdn_core_api` já estará inicializado nesse ponto, pela chamada a
+-- `hgdn_gdnative_init` a partir da função `godot_gdnative_init`
+local api = ffi.C.hgdn_core_api
+</code></pre>
+      <p>Usando a variável <code>api</code>, um ponteiro para <code>godot_gdnative_core_api_struct</code>,
+        podemos chamar todas essas funções base de GDNative!
+        Vamos reescrever nosso olá mundo, dessa vez usando a <code>api</code>:</p>
+      <pre><code class="language-lua">local ffi = require 'ffi'
+
+ffi.cdef[[
+// ...
+]]
+
+-- `hgdn_core_api` já estará inicializada nesse ponto, pela chamada a
+-- `hgdn_gdnative_init` a partir da função `godot_gdnative_init`
+local api = ffi.C.hgdn_core_api
+
+local message = api.godot_string_chars_to_utf8(&quot;Olá mundo da Lua! \\o/&quot;)
+api.godot_print(message)
+-- Precisamos destruir todos os objetos que somos donos, assim como em C
+api.godot_string_destroy(message)
+-- Se não soubermos exatamente quando um objeto deve ser
+-- destruído, devemos registrá-lo no Coletor de Lixo:
+-- `ffi.gc(message, api.godot_string_destroy)`
+-- Ref: https://luajit.org/ext_ffi_api.html#ffi_gc
+</code></pre>
+      <p>Reconstrua o projeto e reabra o editor de Godot.
+        A mensagem deve aparecer novamente \o/</p>
+      <h2 id="ffi%3A-metatipos" tabindex="-1"><a class="header-anchor" href="#ffi%3A-metatipos">FFI: Metatipos</a></h2>
+      <p>Quando usamos a FFI, que é uma interface bem baixo nível, precisamos ter
+        muito cuidado com o gerenciamento de memória, SEGFAULTs e outros
+        problemas comuns encontrados em códigos C.
+        Todos os outros métodos para usar código C de Lua são susceptíveis a
+        esses mesmos problemas, então usar FFI ainda é uma boa ideia.</p>
+      <p>LuaJIT vai acompanhar e liberar a memória para dados criados em código
+        Lua, como <code>local some_array = ffi.new('int[1024]')</code>, mas pra executar
+        uma função destrutora customizada, como <code>api.godot_string_destroy</code>,
+        precisamos chamar a função explicitamente ou registrá-la no
+        Coletor de Lixo (no inglês <em>Garbage Collector</em>, abreviado para GC), para
+        que seja executada quando o objeto for coletado.</p>
+      <p>Fazer isso manualmente é muito chato e passível de erros, então vamos
+        trazer a API de GDNative mais perto do mundo de Lua declarando
+        <a href="https://luajit.org/ext_ffi_api.html#ffi_metatype">metatipos</a>.
+        Com metatipos, podemos definir uma <a href="https://www.lua.org/manual/5.2/pt/manual.html#2.4">metatabela</a>
+        para dados definidos em código C, pra que eles tenham métodos, incluindo
+        construtor e destrutor, implementar operadores aritméticos e de
+        comparação, dentre outros.
+      </p>
+      <p>Por enquanto, vou implementar somente o básico do tipo <code>godot_string</code>
+        pra que possamos imprimir mensagens nas funções de <em>callback</em>.
+        Essa implementação vai em um arquivo novo, <code>src/string.lua</code>, pra
+        mantermos o projeto organizado:</p>
+      <pre><code class="language-lua">-- src/string.lua
+
+-- Note que mesmo `api` sendo declarada como uma variável local em
+-- `src/ffi.lua`, como os arquivos vão ser concatenados antes de rodar,
+-- podemos acessá-la aqui
+
+-- Métodos de String, tirados da API GDNative e ajustados para ficarem
+-- mais idiomáticos pra código Lua, quando necessário
+local string_methods = {
+    -- Retorna o tamanho do texto
+    length = api.godot_string_length,
+    -- Retorna o conteúdo como uma string de Lua, codificada em UTF-8
+    utf8 = function(self)
+        -- `godot_string` guarda caracteres largos, então precisamos
+        -- primeiro pegar a string de caracteres, pra daí criar uma
+        -- string de Lua
+        local char_string = api.godot_string_utf8(self)
+        local pointer = api.godot_char_string_get_data(char_string)
+        local length = api.godot_char_string_length(char_string)
+        -- Ref: https://luajit.org/ext_ffi_api.html#ffi_string
+        local lua_string = ffi.string(pointer, length)
+        -- Assim como em C, precisamos destruir os dados que somos donos
+        api.godot_char_string_destroy(char_string)
+        return lua_string
+    end,
+}
+
+-- Metatipo String, usado para instâncias de `godot_string`
+-- Note que deixamos como uma variável global, pra que scripts
+-- possam usar facilmente
+String = ffi.metatype('godot_string', {
+    -- Método construtor
+    -- Chamar `String(value)` criará uma `godot_string` com
+    -- o conteúdo de `valor` depois de passado por `tostring`
+    __new = function(metatype, value)
+        local self = ffi.new(metatype)
+        -- Se `value` for outra `godot_string`, cria uma cópia
+        if ffi.istype(metatype, value) then
+            api.godot_string_new_copy(self, value)
+        -- Caso geral
+        else
+            local str = tostring(value)
+            api.godot_string_parse_utf8_with_len(self, str, #str)
+        end
+        return self
+    end,
+    -- Método destrutor
+    __gc = api.godot_string_destroy,
+    -- Usar a tabela de métodos como valor de `__index` faz com que os
+    -- métodos estejam disponíveis a partir das instâncias
+    -- Exemplo: `godot_string:length()`
+    __index = string_methods,
+    -- Operação de tamanho: `#godot_string` retorna o tamanho do texto
+    __len = function(self)
+        return string_methods.length(self)
+    end,
+    -- Chamar `tostring(godot_string)` vai invocar esse metamétodo
+    __tostring = string_methods.utf8,
+    -- Operação de concatenação: `godot_string .. godot_string` criará
+    -- uma nova `godot_string` com o conteúdo de ambas concatenados
+    __concat = function(a, b)
+        -- Converter `a` e `b` para Strings possibilita expressões
+        -- como `42 .. some_godot_string .. &quot; some Lua string &quot;`
+        local str = api.godot_string_operator_plus(String(a), String(b))
+        -- LuaJIT não consegue ter certeza se dados retornados de
+        -- funções C devem ser acompanhadas ou não pelo Coletor de Lixo,
+        -- já que APIs C podem requerer ou não que o objeto retornado
+        -- seja destruído pelo usuário.
+        -- Nos casos onde somos donos dos dados, como esse, pediremos
+        -- pro GC acompanhar esse objeto.
+        -- Na API GDNative, sempre que uma função retornar um objeto
+        -- struct/union e não um ponteiro, somos donos dos dados.
+        ffi.gc(str, api.godot_string_destroy)
+        return str
+    end,
+})
+</code></pre>
+      <p>Pra ter certeza que nossa implementação está funcionando, vou criar
+        também um arquivo <code>src/test.lua</code> e mover o código de teste de
+        <code>src/ffi.lua</code> para ele:
+      </p>
+      <pre><code class="language-lua">-- src/test.lua
+local message = String(&quot;Olá mundo da Lua! \\o/&quot;)
+api.godot_print(message)
+</code></pre>
+      <p>Agora que temos mais arquivos Lua formando o <em>script</em> de inicialização,
+        precisamos especificar todos os arquivos em <code>xmake.lua</code>, na ordem certa:</p>
+      <pre><code class="language-lua">-- xmake.lua
+add_requires(&quot;luajit&quot;, {
+    -- ...
+})
+
+rule(&quot;generate_init_script&quot;)
+    -- ...
+rule_end()
+
+target(&quot;lua_pluginscript&quot;)
+    -- ...
+    add_files(
+        -- A ordem é importante!
+        -- Primeiro, declarações FFI
+        &quot;src/ffi.lua&quot;,
+        -- Depois, implementação do metatipo String
+        &quot;src/string.lua&quot;,
+        -- Finalmente, o código de teste
+        &quot;src/test.lua&quot;,
+        { rule = &quot;generate_init_script&quot; }
+    )
+target_end()
+</code></pre>
+      <p>Reconstruir o projeto e reabrir Godot deve mostrar a mensagem novamente.</p>
+      <h2 id="executando-callbacks-de-pluginscript-em-lua" tabindex="-1"><a class="header-anchor" href="#executando-callbacks-de-pluginscript-em-lua">Executando <em>callbacks</em> de <em>PluginScript</em> em Lua</a></h2>
+      <p>Último passo de hoje: vamos fazer os <em>callbacks</em> do nosso <em>plugin</em>
+        chamar código Lua.
+        O jeito mais fácil de fazer isso é declarar ponteiros de função globais,
+        um para cada <em>callback</em>, e preenchê-los com uma implementação feita em
+        Lua, usando FFI.</p>
+      <p>Em <code>src/language_gdnative.c</code>, vamos adicionar os ponteiros de função e
+        chamá-los:</p>
+      <pre><code class="language-c">// src/language_gdnative.c
+
+// ...
+
+// Callbacks a serem implementados em Lua
+void (*lps_language_add_global_constant_cb)(const godot_string *name, const godot_variant *value);
+// Callbacks em LuaJIT não conseguem retornar structs por valor,
+// então `manifest` será criado em C e passado por referência (ponteiro)
+// Ref: https://luajit.org/ext_ffi_semantics.html#callback
+void (*lps_script_init_cb)(godot_pluginscript_script_manifest *manifest, const godot_string *path, const godot_string *source, godot_error *error);
+void (*lps_script_finish_cb)(godot_pluginscript_script_data *data);
+godot_pluginscript_instance_data *(*lps_instance_init_cb)(godot_pluginscript_script_data *data, godot_object *owner);
+void (*lps_instance_finish_cb)(godot_pluginscript_instance_data *data);
+godot_bool (*lps_instance_set_prop_cb)(godot_pluginscript_instance_data *data, const godot_string *name, const godot_variant *value);
+godot_bool (*lps_instance_get_prop_cb)(godot_pluginscript_instance_data *data, const godot_string *name, godot_variant *ret);
+// Mesmo problema de `lps_script_init_cb`
+void (*lps_instance_call_method_cb)(godot_pluginscript_instance_data *data, const godot_string_name *method, const godot_variant **args, int argcount, godot_variant *ret, godot_variant_call_error *error);
+void (*lps_instance_notification_cb)(godot_pluginscript_instance_data *data, int notification);
+
+// Chamada quando Godot registrar objetos globais, como nós Autoload
+void lps_language_add_global_constant(godot_pluginscript_language_data *data, const godot_string *name, const godot_variant *value) {
+    lps_language_add_global_constant_cb(name, value);
+}
+
+// Chamada quando um script Lua for carregado: const AlgumScript = preload(&quot;res://algum_script.lua&quot;)
+godot_pluginscript_script_manifest lps_script_init(godot_pluginscript_language_data *data, const godot_string *path, const godot_string *source, godot_error *error) {
+    godot_pluginscript_script_manifest manifest = {
+        .data = NULL,
+        .is_tool = false,
+    };
+    // Os objetos de Godot precisam ser inicializados, ou nosso
+    // plugin dá SEGFAULT
+    hgdn_core_api-&gt;godot_string_name_new_data(&amp;manifest.name, &quot;&quot;);
+    hgdn_core_api-&gt;godot_string_name_new_data(&amp;manifest.base, &quot;&quot;);
+    hgdn_core_api-&gt;godot_dictionary_new(&amp;manifest.member_lines);
+    hgdn_core_api-&gt;godot_array_new(&amp;manifest.methods);
+    hgdn_core_api-&gt;godot_array_new(&amp;manifest.signals);
+    hgdn_core_api-&gt;godot_array_new(&amp;manifest.properties);
+
+    // Marca que deu errado por padrão: a implementação é responsável
+    // por marcar sucesso, quando de fato a chamada for bem sucedida
+    godot_error cb_error = GODOT_ERR_SCRIPT_FAILED;
+    lps_script_init_cb(&amp;manifest, path, source, &amp;cb_error);
+    if (error) {
+        *error = cb_error;
+    }
+
+    return manifest;
+}
+
+// Chamada quando um script Lua for finalizado
+void lps_script_finish(godot_pluginscript_script_data *data) {
+    lps_script_finish_cb(data);
+}
+
+// Chamada quando uma instância for criada: var instancia = AlgumScript.new()
+godot_pluginscript_instance_data *lps_instance_init(godot_pluginscript_script_data *data, godot_object *owner) {
+    return lps_instance_init_cb(data, owner);
+}
+
+// Chamada quando uma instância for finalizada
+void lps_instance_finish(godot_pluginscript_instance_data *data) {
+    lps_instance_finish_cb(data);
+}
+
+// Chamada ao escrever uma propriedade de instância: instancia.prop = valor
+godot_bool lps_instance_set_prop(godot_pluginscript_instance_data *data, const godot_string *name, const godot_variant *value) {
+    return lps_instance_set_prop_cb(data, name, value);
+}
+
+// Chamada ao ler uma propriedade de instância: var valor = instancia.prop
+godot_bool lps_instance_get_prop(godot_pluginscript_instance_data *data, const godot_string *name, godot_variant *ret) {
+    return lps_instance_get_prop_cb(data, name, ret);
+}
+
+// Chamada ao chamar um método em uma instância: instancia.metodo(args)
+godot_variant lps_instance_call_method(godot_pluginscript_instance_data *data, const godot_string_name *method, const godot_variant **args, int argcount, godot_variant_call_error *error) {
+    godot_variant var = hgdn_new_nil_variant();
+    lps_instance_call_method_cb(data, method, args, argcount, &amp;var, error);
+    return var;
+}
+
+// Chamada quando uma notificação for enviada à instância
+void lps_instance_notification(godot_pluginscript_instance_data *data, int notification) {
+    lps_instance_notification_cb(data, notification);
+}
+
+// ...
+</code></pre>
+      <p>Depois, adicionamos as definições desses <em>callbacks</em> em <code>src/ffi.lua</code>:</p>
+      <pre><code class="language-lua">-- src/ffi.lua
+local ffi = require 'ffi'
+
+ffi.cdef[[
+// ...
+
+// Callbacks do PluginScript
+void (*lps_language_add_global_constant_cb)(const godot_string *name, const godot_variant *value);
+void (*lps_script_init_cb)(godot_pluginscript_script_manifest *manifest, const godot_string *path, const godot_string *source, godot_error *error);
+void (*lps_script_finish_cb)(godot_pluginscript_script_data *data);
+godot_pluginscript_instance_data *(*lps_instance_init_cb)(godot_pluginscript_script_data *data, godot_object *owner);
+void (*lps_instance_finish_cb)(godot_pluginscript_instance_data *data);
+godot_bool (*lps_instance_set_prop_cb)(godot_pluginscript_instance_data *data, const godot_string *name, const godot_variant *value);
+godot_bool (*lps_instance_get_prop_cb)(godot_pluginscript_instance_data *data, const godot_string *name, godot_variant *ret);
+void (*lps_instance_call_method_cb)(godot_pluginscript_instance_data *data, const godot_string_name *method, const godot_variant **args, int argcount, godot_variant *ret, godot_variant_call_error *error);
+void (*lps_instance_notification_cb)(godot_pluginscript_instance_data *data, int notification);
+]]
+
+-- `hgdn_core_api` já estará inicializada nesse ponto, pela chamada a
+-- `hgdn_gdnative_init` a partir da função `godot_gdnative_init`
+local api = ffi.C.hgdn_core_api
+</code></pre>
+      <p>Por fim, criamos um arquivo novo <code>src/pluginscript_callbacks.lua</code> para
+        implementá-los:</p>
+      <pre><code class="language-lua">-- src/pluginscript_callbacks.lua
+
+-- Função auxiliar que imprime erros
+local function print_error(message)
+    local info = debug.getinfo(2, 'nSl')
+    api.godot_print_error(message, info.name, info.short_src, info.currentline)
+end
+
+-- Todos os callbacks rodarão em modo protegido, pra evitar que erros
+-- em código Lua abortem o jogo/aplicação
+-- Se ocorrer um erro, ele será impresso no painel de saída
+local function wrap_callback(f)
+    return function(...)
+        local success, result = xpcall(f, print_error, ...)
+        return result
+    end
+end
+
+-- void (*lps_language_add_global_constant_cb)(const godot_string *name, const godot_variant *value);
+ffi.C.lps_language_add_global_constant_cb = wrap_callback(function(name, value)
+    api.godot_print(String('TODO: add_global_constant'))
+end)
+
+-- void (*lps_script_init_cb)(godot_pluginscript_script_manifest *manifest, const godot_string *path, const godot_string *source, godot_error *error);
+ffi.C.lps_script_init_cb = wrap_callback(function(manifest, path, source, err)
+    api.godot_print(String('TODO: script_init ' .. path))
+end)
+
+-- void (*lps_script_finish_cb)(godot_pluginscript_script_data *data);
+ffi.C.lps_script_finish_cb = wrap_callback(function(data)
+    api.godot_print(String('TODO: script_finish'))
+end)
+
+-- godot_pluginscript_instance_data *(*lps_instance_init_cb)(godot_pluginscript_script_data *data, godot_object *owner);
+ffi.C.lps_instance_init_cb = wrap_callback(function(script_data, owner)
+    api.godot_print(String('TODO: instance_init'))
+    return nil
+end)
+
+-- void (*lps_instance_finish_cb)(godot_pluginscript_instance_data *data);
+ffi.C.lps_instance_finish_cb = wrap_callback(function(data)
+    api.godot_print(String('TODO: instance_finish'))
+end)
+
+-- godot_bool (*lps_instance_set_prop_cb)(godot_pluginscript_instance_data *data, const godot_string *name, const godot_variant *value);
+ffi.C.lps_instance_set_prop_cb = wrap_callback(function(data, name, value)
+    api.godot_print(String('TODO: instance_set_prop'))
+    return false
+end)
+
+-- godot_bool (*lps_instance_get_prop_cb)(godot_pluginscript_instance_data *data, const godot_string *name, godot_variant *ret);
+ffi.C.lps_instance_get_prop_cb = wrap_callback(function(data, name, ret)
+    api.godot_print(String('TODO: instance_get_prop'))
+    return false
+end)
+
+-- void (*lps_instance_call_method_cb)(godot_pluginscript_instance_data *data, const godot_string_name *method, const godot_variant **args, int argcount, godot_variant *ret, godot_variant_call_error *error);
+ffi.C.lps_instance_call_method_cb = wrap_callback(function(data, name, args, argcount, ret, err)
+    api.godot_print(String('TODO: instance_call_method'))
+end)
+
+-- void (*lps_instance_notification_cb)(godot_pluginscript_instance_data *data, int notification);
+ffi.C.lps_instance_notification_cb = wrap_callback(function(data, what)
+    api.godot_print(String('TODO: instance_notification'))
+end)
+</code></pre>
+      <p>Mais uma vez, adicionamos o arquivo novo no <code>xmake.lua</code> e reconstruímos:</p>
+      <pre><code class="language-lua">-- xmake.lua
+
+-- ...
+
+target(&quot;lua_pluginscript&quot;)
+    -- ...
+    add_files(
+        -- A ordem é importante!
+        -- Primeiro, declarações FFI
+        &quot;src/ffi.lua&quot;,
+        -- Depois, implementação do metatipo String
+        &quot;src/string.lua&quot;,
+        -- Daí os callbacks
+        &quot;src/pluginscript_callbacks.lua&quot;,
+        -- Finalmente, o código de teste
+        &quot;src/test.lua&quot;,
+        { rule = &quot;generate_init_script&quot; }
+    )
+target_end()
+</code></pre>
+      <p>Se abrirmos o arquivo <code>xmake.lua</code> em Godot, devemos ver a mensagem</p>
+      <p><code>TODO: script_init res://addons/godot-lua-pluginscript/xmake.lua</code> no
+        painel de saída, já que o editor tentou inicializá-lo como um <em>script</em>:</p>
+      <p><img src="https://raw.githubusercontent.com/gilzoide/godot-lua-pluginscript/main/extras/articles/3-script-init-xmake-lua.png" alt=""></p>
+      <h2 id="conclus%C3%A3o" tabindex="-1"><a class="header-anchor" href="#conclus%C3%A3o">Conclusão</a></h2>
+      <p>Hoje vimos como integrar LuaJIT em nosso projeto e como podemos
+        implementar <em>callbacks</em> em Lua via FFI.
+        A versão do projeto construída nesse artigo está disponível <a href="https://github.com/gilzoide/godot-lua-pluginscript/tree/blog-3-luajit-callbacks">aqui</a>.</p>
+      <p>No próximo artigo, vamos implementar inicialização e finalização dos
+        <em>scripts</em>.
+      </p>
+      <p>Boa sorte pra todos nós, até a próxima!</p>
+
+
+      <br />
+      <hr class="thin" />
+      <p>
+        Curte esse conteúdo? Patrocine meu trabalho usando o botão abaixo!
+      </p>
+      <iframe src="https://github.com/sponsors/gilzoide/button" title="Sponsor gilzoide" height="32" width="114" style="border: 0; border-radius: 6px;"></iframe>
+
+    </div>
+  </div>
+
+  <div class="flex-stretch"></div>
+
+  <footer class="main-footer justify-center"><a href="https://github.com/gilzoide/">
+      <img src="/images/github.png" alt="GitHub" />
+    </a><a href="https://www.linkedin.com/in/gilzoide/">
+      <img src="/images/linkedin.png" alt="LinkedIn" />
+    </a>
+    <div class="flex-break"></div>
+    <p class="main-footer-copyright">Copyright ⓒ 2025 Gil Barbosa Reis</p>
+  </footer>
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.9.0/highlightjs-line-numbers.min.js"></script>
+  <script src="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/languages/c.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/languages/lua.min.js"></script>
+  <script>
+    hljs.addPlugin(new CopyButtonPlugin());
+    hljs.highlightAll()
+    hljs.initLineNumbersOnLoad()
+  </script>
+  <script src="/js/dropdown.js"></script>
+</body>
+
+</html>

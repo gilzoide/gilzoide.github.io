@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-witdh, initial-scale=1" />
+  <title>
+    Update objects using DOTS without ECS -
+    gilzoide
+  </title>
+  <link rel="icon" href="/images/about-picture.jpg" type="image/jpeg" />
+  <link rel="alternate" hreflang="en" href="/en/2023-11-21-unity-dots-update/" />
+
+  <link rel="alternate" hreflang="pt" href="/pt/2023-11-21-unity-dots-update/" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/cards.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/styles/github-dark-dimmed.min.css" integrity="sha512-zcatBMvxa7rT7dDklfjauWsfiSFParF+hRfCdf4Zr40/MmA1gkFcBRbop0zMpvYF3FmznYFgcL8wlcuO/GwHoA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.css" />
+  <link rel="stylesheet" href="/css/code_highlight.css" />
+</head>
+
+<body>
+  <nav class="main-nav">
+    <ul>
+      <li><a class="nav-text" href="/en/">Blog</a></li>
+      <li><a class="nav-text" href="/en/about/">About</a></li>
+      <li class="dropdown-button">
+        <button class="nav-icon">
+          <img src="/images/locale-language.png" />
+        </button>
+        <div class="dropdown">
+          <a class="nav-text nav-active" href="" lang="en" hreflang="en">English</a>
+
+          <a class="nav-text" href="/pt/2023-11-21-unity-dots-update/" lang="pt" hreflang="pt">Português</a>
+        </div>
+      </li>
+    </ul>
+  </nav>
+
+  <div class="justify-center">
+    <div class="main-content">
+
+      <h2 class="card-title">
+        Update objects using DOTS without ECS</h2>
+      <span class="card-meta">2023-11-21&ensp; | &ensp;
+        <div>
+          <a class="decorated-link card-tag">Unity</a>
+          <a class="decorated-link card-tag">DOTS</a>
+          <a class="decorated-link card-tag">Update Manager</a>
+        </div>
+      </span>
+
+      <blockquote>
+        <p>Originally published at <a href="https://github.com/gilzoide/unity-update-manager/blob/main/Extras~/article-update-dots.md">https://github.com/gilzoide/unity-update-manager/blob/main/Extras~/article-update-dots.md</a></p>
+      </blockquote>
+
+      <p><a href="https://unity.com/dots">DOTS</a> - Unity's Data-Oriented Technology Stack - is a combination of technologies that enables building games with a data-oriented approach.
+        When used correctly, processing can be scaled in a highly performant manner, taking advantage of parallelized computations, compilation from C# to highly optimized native code using the <a href="https://docs.unity3d.com/Packages/com.unity.burst@latest?subfolder=/manual/index.html">Burst</a> compiler, and more.</p>
+      <p>The official DOTS solution for executing update methods every frame is by using the <a href="https://docs.unity3d.com/Packages/com.unity.entities@latest?subfolder=/manual/index.html">Entities</a> package - a framework that implements the <a href="https://unity.com/ecs">Entity Component System (ECS)</a> architecture.
+        As described in the <a href="https://docs.unity3d.com/Packages/com.unity.entities@1.2/manual/ecs-workflow-intro.html">ECS workflow</a> documentation, the default way of working with ECS is by creating a subscene, authoring normally with GameObjects and MonoBehaviours, then creating &quot;baker&quot; classes that will bake the regular components to ECS components.
+        After baking, there are no GameObjects and MonoBehaviours anymore, so lots of development workflows and packages that we are used to use in Unity are not supported when interfacing with ECS objects.</p>
+      <p>If you are not using ECS in your project yet, it might be very difficult to refactor your gameplay logic to fit the ECS framework.
+        Sometimes, all you want is to run your MonoBehaviour's Update logic in background threads in parallel, but still work with GameObjects.
+        For these cases, like moving hundreds of bullets forward in a Shoot 'em Up game, and lots of other ones, using the <a href="https://github.com/gilzoide/unity-update-manager">Update Manager</a> package and its Job System support is much simpler than going the ECS route, mainly if you are working with components that already exist, rather then implementing them from scratch.</p>
+      <h2 id="moving-forward-(using-c%23-jobs)" tabindex="-1"><a class="header-anchor" href="#moving-forward-(using-c%23-jobs)">Moving forward (using C# Jobs)</a></h2>
+      <p>Using Update Jobs is quite simple.
+        After installing the <a href="https://github.com/gilzoide/unity-update-manager">Update Manager</a> package, the basic workflow is:</p>
+      <ol>
+        <li>Create a job struct type that implements <code>IUpdateTransformJob</code>.
+          Transform jobs have access to the <code>Transform</code> being updated via a <code>TransformAccess</code> instance.</li>
+        <li>Inherit <code>AJobBehaviour&lt;&gt;</code> instead of <code>MonoBehaviour</code>: the only required override is the <code>InitialJobData</code> property</li>
+      </ol>
+      <p>First, let's create a job that moves an object forward:</p>
+      <pre><code class="language-cs">using Gilzoide.UpdateManager.Jobs;
+using UnityEngine;
+using UnityEngine.Jobs;
+
+// 1. Create a job struct type that implements `IUpdateTransformJob`
+public struct MoveForwardJob : IUpdateTransformJob
+{
+    // 2. (optional) Define any parameters you may need
+    public float Speed;
+
+    // 3. Implement the `Execute` method 
+    public void Execute(TransformAccess transformAccess)
+    {
+        // Background threads cannot access Time.deltaTime,
+        // so we need to use use `UpdateJobTime.deltaTime` instead
+        float deltaTime = UpdateJobTime.deltaTime;
+
+        // TransformAccess doesn't have the Translate method,
+        // so we need to update its `position` directly
+        Vector3 direction = transformAccess.rotation * Vector3.forward;
+        transformAccess.position += Speed * deltaTime * direction;
+    }
+}
+</code></pre>
+      <p>Last, but not least, let's define a component that runs our <code>MoveForwardJob</code> every frame as its update method:</p>
+      <pre><code class="language-cs">using Gilzoide.UpdateManager.Jobs;
+using UnityEngine;
+
+// 1. Inherit `AJobBehaviour&lt;&gt;` and your component will
+// automatically update using the Job System while enabled.
+public class MoveForwardComponent : AJobBehaviour&lt;MoveForwardJob&gt;
+{
+    // 2. (optional) Declare any fields you may need
+    public float Speed = 1;
+
+    // 3. Define the job data used when initializing a new job
+    public override MoveForwardJob InitialJobData =&gt; new MoveForwardJob
+    {
+        Speed = Speed,
+    };
+}
+</code></pre>
+      <p>That's it, the basic workflow is done: when <code>MoveForwardComponent</code> is enabled, it will be updated every frame using Unity's C# Job System.
+        When disabled, the update job will stop running.
+        Attach this component to a GameObject in your scene, enter Play Mode and you should see it moving forward.</p>
+      <h2 id="parallelization" tabindex="-1"><a class="header-anchor" href="#parallelization">Parallelization</a></h2>
+      <p>The Update Manager package runs all instances of your job struct at the same time in a single parallel job.
+        There is no guarantee that the Job System will actually execute them in parallel, as there are a limited number of preallocated threads for running jobs.
+        Also, depending on the number of objects, it is possible that all of them end up being processed by a single thread in a single batch.</p>
+      <p>For jobs with a <code>TransformAccess</code>, if all of the transforms are in different hierarchies, that is, they do not share a common root transform, the jobs may always run in parallel.
+        If you only read values from the <code>TransformAccess</code> but never modify them, you can mark the job struct type with the <code>[ReadOnlyTransformAccess]</code> attribute, so that even transforms in the same hierarchy may be processed in parallel as well.</p>
+      <h2 id="synchronizing-data" tabindex="-1"><a class="header-anchor" href="#synchronizing-data">Synchronizing data</a></h2>
+      <p>Now that our update job is a different instance in memory than the MonoBehaviour that created it, their data might desynchronize.
+        For example, if we change the value of the <code>Speed</code> variable from a <code>MoveForwardComponent</code> that is already enabled and running, the job will still use the old speed by default.</p>
+      <p>To be able to synchronize data between update jobs and their corresponding updatable instance, we need to implement the <code>IJobDataSynchronizer&lt;&gt;</code> interface.
+        This interface declares a single method, <code>void SyncJobData(ref T jobData)</code>.
+        Notice that the parameter has <code>ref T</code> type, which means that we can modify the job data, even if it is of a struct type.</p>
+      <p>Let's implement data synchronization in our <code>MoveForwardComponent</code>, so that it writes the new value of Speed when we update it in the inspector:</p>
+      <pre><code class="language-cs">using Gilzoide.UpdateManager.Jobs;
+using UnityEngine;
+
+public class MoveForwardComponent : AJobBehaviour&lt;MoveForwardJob&gt;,
+    // 1. Declare that we implement IJobDataSynchronizer&lt;&gt;
+    IJobDataSynchronizer&lt;MoveForwardJob&gt;
+{
+    public float Speed = 1;
+
+    public override MoveForwardJob InitialJobData =&gt; new MoveForwardJob
+    {
+        Speed = Speed,
+    };
+
+    // 2. Implement data synchronization
+    // In this case, just copy the value of `Speed`
+    public void SyncJobData(ref MoveForwardJob jobData)
+    {
+        jobData.Speed = Speed;
+    }
+}
+</code></pre>
+      <p>All right, that's it.
+        Now, the object will synchronize its job data automatically whenever we modify the <code>Speed</code> value in the inspector, using its <code>OnValidate</code> message.
+        To trigger a manual data synchronization by code, just call <code>this.SynchronizeJobDataOnce()</code>.
+        If you want data synchronization to be called every frame, call <code>this.RegisterInManager(true)</code> instead.</p>
+      <p>For example, to modify <code>Speed</code> in code while the job is running, you can use the following <code>SetSpeed</code> method:</p>
+      <pre><code class="language-cs">using Gilzoide.UpdateManager.Jobs;
+using UnityEngine;
+
+public class MoveForwardComponent : AJobBehaviour&lt;MoveForwardJob&gt;,
+    IJobDataSynchronizer&lt;MoveForwardJob&gt;
+{
+    public float Speed = 1;
+
+    public override MoveForwardJob InitialJobData =&gt; new MoveForwardJob
+    {
+        Speed = Speed,
+    };
+
+    public void SyncJobData(ref MoveForwardJob jobData)
+    {
+        jobData.Speed = Speed;
+    }
+
+    // Sets a new value for `Speed`
+    // If the value is different from previous one, synchronize job data
+    public void SetSpeed(float speed)
+    {
+        if (speed != Speed)
+        {
+            Speed = speed;
+            this.SynchronizeJobDataOnce();
+        }
+    }
+}
+</code></pre>
+      <h2 id="using-burst" tabindex="-1"><a class="header-anchor" href="#using-burst">Using Burst</a></h2>
+      <p>To use the Burst compiler and have update jobs compiled to highly optimized native code, all we need to do is change the job struct definition to implement <code>IBurstUpdateTransformJob&lt;&gt;</code> instead of <code>IUpdateTransformJob</code>:</p>
+      <pre><code class="language-cs">using Gilzoide.UpdateManager.Jobs;
+using UnityEngine;
+using UnityEngine.Jobs;
+
+public struct MoveForwardJob : IBurstUpdateTransformJob&lt;BurstUpdateTransformJob&lt;MoveForwardJob&gt;&gt;
+                       // here ^
+{
+    public float Speed;
+
+    public void Execute(TransformAccess transformAccess)
+    {
+        float deltaTime = UpdateJobTime.deltaTime;
+        Vector3 direction = transformAccess.rotation * Vector3.forward;
+        transformAccess.position += Speed * deltaTime * direction;
+    }
+}
+</code></pre>
+      <p>Notice that it is required to actually write <code>BurstUpdateTransformJob&lt;MoveForwardJob&gt;</code> in the project's code for the Burst compiler to be able to compile the job.
+        This is why the interface is <code>IBurstUpdateTransformJob&lt;&gt;</code> instead of <code>IBurstUpdateTransformJob</code>, just to fulfill this formality.</p>
+      <h2 id="other-nice-features" tabindex="-1"><a class="header-anchor" href="#other-nice-features">Other nice features</a></h2>
+      <p>The Update Manager has other nice features related to DOTS/C# Jobs:</p>
+      <ul>
+        <li>Any C# class can be updated using jobs, it doesn't need to be a MonoBehaviour.
+          Implement <code>IJobUpdatable</code> or <code>ITransformJobUpdatable</code>, start running updates with <code>this.RegisterInManager()</code> and that's it.
+          Don't forget to stop running updates with <code>this.UnregisterInManager()</code> when necessary.</li>
+        <li>You can implement jobs without a <code>TransformAccess</code>, just implement <code>IUpdateJob</code> instead of <code>IUpdateTransformJob</code>.</li>
+        <li>You can define dependencies between job types, so that one job only executes after the other has finished.
+          Check out the <a href="../Samples~/FollowTarget/">Follow Target sample</a> for an example of usage.</li>
+      </ul>
+      <p>For an example of pure C# classes being updated every frame with jobs without any <code>TransformAccess</code>, check out the <a href="https://github.com/gilzoide/unity-tween-jobs">Tween Jobs</a> package.</p>
+
+
+      <br />
+      <hr class="thin" />
+      <p>
+        Like this content? Sponsor my work using the button below!
+      </p>
+      <iframe src="https://github.com/sponsors/gilzoide/button" title="Sponsor gilzoide" height="32" width="114" style="border: 0; border-radius: 6px;"></iframe>
+
+    </div>
+  </div>
+
+  <div class="flex-stretch"></div>
+
+  <footer class="main-footer justify-center"><a href="https://github.com/gilzoide/">
+      <img src="/images/github.png" alt="GitHub" />
+    </a><a href="https://www.linkedin.com/in/gilzoide/">
+      <img src="/images/linkedin.png" alt="LinkedIn" />
+    </a>
+    <div class="flex-break"></div>
+    <p class="main-footer-copyright">Copyright ⓒ 2025 Gil Barbosa Reis</p>
+  </footer>
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.9.0/highlightjs-line-numbers.min.js"></script>
+  <script src="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/languages/csharp.min.js"></script>
+  <script>
+    hljs.addPlugin(new CopyButtonPlugin());
+    hljs.highlightAll()
+    hljs.initLineNumbersOnLoad()
+  </script>
+  <script src="/js/dropdown.js"></script>
+</body>
+
+</html>

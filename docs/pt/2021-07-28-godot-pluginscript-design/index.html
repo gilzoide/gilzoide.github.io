@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="pt" dir="ltr">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-witdh, initial-scale=1" />
+  <title>
+    Projetando um PluginScript de Godot para Lua -
+    gilzoide
+  </title>
+  <link rel="icon" href="/images/about-picture.jpg" type="image/jpeg" />
+  <link rel="alternate" hreflang="en" href="/en/2021-07-28-godot-pluginscript-design/" />
+
+  <link rel="alternate" hreflang="pt" href="/pt/2021-07-28-godot-pluginscript-design/" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/cards.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/styles/github-dark-dimmed.min.css" integrity="sha512-zcatBMvxa7rT7dDklfjauWsfiSFParF+hRfCdf4Zr40/MmA1gkFcBRbop0zMpvYF3FmznYFgcL8wlcuO/GwHoA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.css" />
+  <link rel="stylesheet" href="/css/code_highlight.css" />
+</head>
+
+<body>
+  <nav class="main-nav">
+    <ul>
+      <li><a class="nav-text" href="/pt/">Blog</a></li>
+      <li><a class="nav-text" href="/pt/about/">Sobre</a></li>
+      <li class="dropdown-button">
+        <button class="nav-icon">
+          <img src="/images/locale-language.png" />
+        </button>
+        <div class="dropdown">
+          <a class="nav-text" href="/en/2021-07-28-godot-pluginscript-design/" lang="en" hreflang="en">English</a>
+
+          <a class="nav-text nav-active" href="" lang="pt" hreflang="pt">Português</a>
+        </div>
+      </li>
+    </ul>
+  </nav>
+
+  <div class="justify-center">
+    <div class="main-content">
+
+      <h2 class="card-title">
+        Projetando um PluginScript de Godot para Lua</h2>
+      <span class="card-meta">2021-07-28&ensp; | &ensp;
+        <div>
+          <a class="decorated-link card-tag">Godot</a>
+          <a class="decorated-link card-tag">Lua</a>
+          <a class="decorated-link card-tag">GDNative</a>
+          <a class="decorated-link card-tag">PluginScript</a>
+          <a class="decorated-link card-tag">language bindings</a>
+        </div>
+      </span>
+
+      <blockquote>
+        <p>Originalmente publicado em <a href="https://github.com/gilzoide/godot-lua-pluginscript/blob/main/extras/articles/1-design-pt.md">https://github.com/gilzoide/godot-lua-pluginscript/blob/main/extras/articles/1-design-pt.md</a></p>
+      </blockquote>
+
+      <p>Esse é o primeiro artigo de uma série sobre como estou lidando com o
+        desenvolvimento de um <em>plugin</em> para usar a linguagem de programação <a href="https://www.lua.org/portugues.html">Lua</a> no <a href="https://godotengine.org/">motor de jogos Godot</a>.</p>
+      <p>Lua é uma linguagem de <em>scripting</em> pequena e simples, mas poderosa e flexível.
+        Mesmo <a href="https://docs.godotengine.org/pt_BR/stable/about/faq.html#what-were-the-motivations-behind-creating-gdscript">não sendo ideal para todos os cenários</a>,
+        certamente é uma ótima ferramenta de <em>scripting</em>.
+        Combinando isso com o poder de <a href="https://luajit.org/">LuaJIT</a>, uma das
+        implementações de linguagens dinâmicas mais rápidas que se tem notícia, podemos
+        também <a href="https://luajit.org/ext_ffi.html">chamar funções externas de código C através da <em>Foreign Function Interface</em> (FFI)</a>!</p>
+      <p>Com a natureza dinâmica do sistema de <em>scripting</em> em Godot,
+        todas as linguagens suportadas podem facilmente comunicar entre si, de
+        modo que podemos escolher utilizar a linguagem melhor
+        adaptada à tarefa a ser cumprida para cada <em>script</em>.
+        Utilizando <a href="https://docs.godotengine.org/pt_BR/stable/getting_started/step_by_step/signals.html">sinais</a>
+        e os métodos <a href="https://docs.godotengine.org/pt_BR/stable/classes/class_object.html#class-object-method-call">call</a>,
+        <a href="https://docs.godotengine.org/pt_BR/stable/classes/class_object.html#id1">get</a>
+        e <a href="https://docs.godotengine.org/pt_BR/stable/classes/class_object.html#id4">set</a>,
+        qualquer objeto pode se comunicar com qualquer outro, não importando
+        a linguagem na qual o código-fonte foi escrito.
+      </p>
+      <p>Para fazer com que Lua seja reconhecida como uma linguagem de
+        <em>scripting</em> em Godot, vamos criar um <em>PluginScript</em>, que é um dos usos
+        do sistema <a href="https://docs.godotengine.org/pt_BR/stable/getting_started/step_by_step/scripting.html#gdnative-c">GDNative</a>,
+        a API em C para desenvolver <em>plugins</em> que estendem várias
+        funcionalidades do motor, incluindo o sistema de <em>scripting</em>.
+        Um dos benefícios desse método é que somente o <em>plugin</em> precisa ser
+        compilado, de modo que qualquer pessoa com uma versão padrão
+        precompilada de Godot possa utilizá-lo! =D
+      </p>
+      <h2 id="objetivos" tabindex="-1"><a class="header-anchor" href="#objetivos">Objetivos</a></h2>
+      <ul>
+        <li>Adicionar suporte à linguagem Lua em Godot de um modo que o motor não
+          precise ser compilado do zero</li>
+        <li>Possibilitar que <em>scripts</em> Lua se comuniquem transparentemente com
+          quaisquer outras linguagens suportadas, como GDScript, Visual Script e C#</li>
+        <li>Ter uma interface descritiva simples para declarar <em>scripts</em></li>
+        <li>Suporte a Lua 5.2+ e LuaJIT</li>
+        <li>Ter um processo de construção simples, onde qualquer um com o
+          código-fonte em mãos e o sistema de construção + <em>toolchain</em>
+          instalados possam compilar o projeto em um único passo</li>
+      </ul>
+      <h2 id="n%C3%A3o-objetivos" tabindex="-1"><a class="header-anchor" href="#n%C3%A3o-objetivos">Não objetivos</a></h2>
+      <ul>
+        <li>Prover meios de chamar métodos nativamente nas classes padrão de Godot
+          via <em>method bindings</em></li>
+        <li>Suportar <em>multithreading</em> em Lua</li>
+      </ul>
+      <h2 id="script-exemplo" tabindex="-1"><a class="header-anchor" href="#script-exemplo"><em>Script</em> exemplo</a></h2>
+      <p>Este é um exemplo de como um <em>script</em> Lua se parecerá. Há comentários
+        explicando algumas decisões de <em>design</em>, que podem mudar ao longo do
+        desenvolvimento do projeto.</p>
+      <pre><code class="language-lua">-- Definições de classes são tabelas, que devem ser retornadas no fim do script
+local MinhaClasse = {}
+
+-- Opcional: marcar classe como tool
+MinhaClasse.is_tool = true
+
+-- Opcional: declarar o nome da classe base, padrão 'Reference'
+MinhaClasse.extends = 'Node'
+
+-- Opcional: dê um nome à sua classe
+MinhaClasse.class_name = 'MinhaClasse'
+
+-- Declaração de sinais
+MinhaClasse.um_sinal = signal()
+MinhaClasse.um_sinal_com_argumentos = signal(&quot;arg1&quot;, &quot;arg2&quot;)
+
+-- Valores definidos na tabela são registrados como propriedades da classe
+MinhaClasse.uma_propriedade = 42
+
+-- A função `property` adiciona metadados às propriedades definidas,
+-- como métodos setter e getter
+MinhaClasse.uma_propriedade_com_detalhes = property {
+  -- [1] ou [&quot;default&quot;] ou [&quot;default_value&quot;] = valor padrão da propriedade
+  5,
+  -- [2] ou [&quot;type&quot;] = tipo da variante, opcional, inferido do valor padrão
+  -- Todos os nomes dos tipos de variantes serão definidos globalmente com
+  -- o mesmo nome em GDScript, como bool, int, float, String, Array, etc...
+  -- Note que Lua &lt;= 5.2 não diferencia números inteiros de reais,
+  -- então devemos especificar `int` sempre que apropriado
+  -- ou usar `int(5)` no lugar do valor padrão
+  type = int,
+  -- [&quot;set&quot;] ou [&quot;setter&quot;] = função setter, opcional
+  set = function(self, valor)
+    self.uma_propriedade_com_detalhes = valor
+    -- Indexar `self` com chaves não definidas no script buscará métodos
+    -- e propriedades na classe base
+    self:emit_signal(&quot;um_sinal_com_argumentos&quot;, &quot;uma_propriedade_com_detalhes&quot;, valor)
+  end,
+  -- [&quot;get&quot;] ou [&quot;getter&quot;] = função getter, opcional
+  get = function(self)
+    return self.uma_propriedade_com_detalhes
+  end,
+  -- [&quot;usage&quot;] = flag de uso da propriedade, do enum godot_property_usage_flags
+  -- opcional, usa GD.PROPERTY_USAGE_DEFAULT por padrão
+  usage = GD.PROPERTY_USAGE_DEFAULT,
+  -- [&quot;hint&quot;] = flag de dica da propriedade, do enum godot_property_hint
+  -- opcional, usa GD.PROPERTY_HINT_NONE por padrão
+  hint = GD.PROPERTY_HINT_RANGE,
+  -- [&quot;hint_string&quot;] = texto da dica da propriedade, somente necessária
+  -- para algumas dicas
+  hint_string = '1,10',
+  -- [&quot;rset_mode&quot;] = flag de RPC da propriedade, do enum godot_method_rpc_mode
+  -- opcional, usa GD.RPC_MODE_DISABLED por padrão
+  rset_mode = GD.RPC_MODE_MASTER,
+}
+
+-- Funções definidas na tabela são registrados como métodos
+function MinhaClasse:_init()  -- `function t:f(...)` é uma abreviação de `function t.f(self, ...)`
+  -- Singletons estão disponíveis globalmente
+  local nome_os = OS:get_name()
+  print(&quot;Instância de MinhaClasse inicializada! Rodando em um sistema &quot; .. nome_os)
+end
+
+function MinhaClasse:uma_propriedade_dobrada()
+  return self.uma_propriedade * 2
+end
+
+-- Ao final do script, a tabela com definição da classe deve ser retornada
+return MinhaClasse
+</code></pre>
+      <h2 id="projeto-da-implementa%C3%A7%C3%A3o" tabindex="-1"><a class="header-anchor" href="#projeto-da-implementa%C3%A7%C3%A3o">Projeto da implementação</a></h2>
+      <p><em>PluginScripts</em> possuem três conceitos importantes: Descrição da
+        Linguagem, Manifestos de <em>Script</em> e Instâncias.</p>
+      <p>Vamos descobrir o que cada uma dessas camadas é e como elas se
+        comportarão, numa perspectiva alto nível:</p>
+      <h3 id="descri%C3%A7%C3%A3o-da-linguagem" tabindex="-1"><a class="header-anchor" href="#descri%C3%A7%C3%A3o-da-linguagem">Descrição da Linguagem</a></h3>
+      <p>A descrição da linguagem informa Godot como inicializar e finalizar o
+        <em>runtime</em> da linguagem, além de como carregar manifestos de scripts a
+        partir de arquivos com código-fonte.
+      </p>
+      <p>Ao inicializar a linguagem, um novo <a href="https://www.lua.org/manual/5.2/pt/manual.html#lua_State">estado (lua_State)</a>
+        será criado e funcionalidade de Godot adicionada a ele.
+        A máquina virtual (VM) de Lua utilizará rotinas de gerenciamento de memória do motor, para
+        que o uso de memória seja rastreado pelo monitor de performance em
+        <em>builds</em> de <em>debug</em> dos jogos/aplicações.
+        Todos os <em>scripts</em> compartilharão desse mesmo estado.
+      </p>
+      <p>Haverá uma tabela global chamada <code>GD</code> com funções específicas de Godot,
+        como <a href="https://docs.godotengine.org/pt_BR/stable/classes/class_%40gdscript.html#class-gdscript-method-load">load</a>,
+        <a href="https://docs.godotengine.org/pt_BR/stable/classes/class_%40gdscript.html#class-gdscript-method-print">print</a>,
+        <a href="https://docs.godotengine.org/pt_BR/stable/classes/class_%40gdscript.html#class-gdscript-method-push-error">push_error</a>,
+        <a href="https://docs.godotengine.org/pt_BR/stable/classes/class_%40gdscript.html#class-gdscript-method-push-warning">push_warning</a>
+        e <a href="https://docs.godotengine.org/pt_BR/stable/classes/class_%40gdscript.html#class-gdscript-method-yield">yield</a>.
+        A função global de Lua <code>print</code> será trocada por <code>GD.print</code> e a
+        <a href="https://www.lua.org/manual/5.4/manual.html#lua_WarnFunction">função de aviso em Lua 5.4</a>
+        se comportará como uma chamada a <code>push_warning</code>.
+      </p>
+      <p>Funções que recebem nomes de arquivos como argumento, por exemplo
+        <a href="https://www.lua.org/manual/5.2/pt/manual.html#pdf-loadfile">loadfile</a>
+        e <a href="https://www.lua.org/manual/5.2/pt/manual.html#pdf-io.open">io.open</a>,
+        serão atualizadas para aceitar caminhos nos formatos <a href="https://docs.godotengine.org/pt_BR/stable/tutorials/io/data_paths.html#resource-path"><code>res://*</code></a>
+        e <a href="https://docs.godotengine.org/pt_BR/stable/tutorials/io/data_paths.html#user-path-persistent-data"><code>user://*</code></a>.
+        Do mesmo modo, um <a href="https://www.lua.org/manual/5.2/pt/manual.html#pdf-package.searchers">localizador de módulos</a>
+        será adicionado para <a href="https://www.lua.org/manual/5.2/pt/manual.html#pdf-require">require</a>
+        carregue módulos relativos ao caminho <code>res://</code>.
+      </p>
+      <p>Ao finalizar a linguagem, o estado da VM será destruído utilizando
+        <a href="https://www.lua.org/manual/5.2/pt/manual.html#lua_close">lua_close</a>.
+      </p>
+      <h3 id="manifestos-de-script" tabindex="-1"><a class="header-anchor" href="#manifestos-de-script">Manifestos de <em>Script</em></a></h3>
+      <p>Manifestos de <em>script</em> são estruturas que carregam metadados sobre as
+        classes declaradas nos <em>scripts</em>, por exemplo a definição de sinais,
+        propriedades e métodos, assim como se a classe roda em modo
+        <a href="https://docs.godotengine.org/pt_BR/stable/tutorials/misc/running_code_in_the_editor.html">tool</a>
+        e o nome de sua classe base.
+      </p>
+      <p>Em Lua, essa informação será guardada em tabelas indexadas pelo caminho
+        dos <em>scripts</em>.</p>
+      <p>Ao inicializar um <em>script</em>, seu código-fonte será carregado e executado.
+        <em>Scripts</em> devem retornar uma tabela, que definirá os metadados da classe.
+        Funções declaradas na tabela de manifesto são registradas como métodos
+        da classe e outras variáveis são declaradas como propriedades ou sinais.
+      </p>
+      <p>Ao finalizar um <em>script</em>, a tabela do manifesto será destruída.</p>
+      <h3 id="inst%C3%A2ncias" tabindex="-1"><a class="header-anchor" href="#inst%C3%A2ncias">Instâncias</a></h3>
+      <p>Quando um <em>script</em> é adicionado a um objeto, Godot chamará nosso
+        <em>PluginScript</em> para inicializar os dados da instância e quando o objeto
+        for destruído ou tiver o <em>script</em> removido, devemos destruir esses
+        dados.
+      </p>
+      <p>Em Lua, os dados de instâncias serão guardados em tabelas indexadas pelo
+        endereço de memória do objeto dono do script.</p>
+      <p>Quando instâncias são indexadas com uma chave não presente, métodos e
+        propriedades padrão serão buscados no manifesto do <em>script</em> e na classe
+        base, nessa ordem.
+        Essa tabela será passada nos métodos como primeiro argumento, como se
+        usado a notação de chamadas de método em Lua: <code>instancia:metodo(...)</code>.</p>
+      <p>Ao finalizar uma instância, a tabela será destruída.</p>
+      <h2 id="conclus%C3%A3o" tabindex="-1"><a class="header-anchor" href="#conclus%C3%A3o">Conclusão</a></h2>
+      <p>Com a funcionalidade projetada, mesmo que somente em alto nível, já
+        podemos começar a implementar nosso <em>plugin</em>!
+        Eu criei um repositório Git para ele, disponível no endereço
+        <a href="https://github.com/gilzoide/godot-lua-pluginscript">https://github.com/gilzoide/godot-lua-pluginscript</a>.
+      </p>
+      <p>No <a href="../2021-08-04-godot-pluginscript-infrastructure">próximo artigo</a> discutirei como construir a
+        infraestrutura necessária para nosso <em>PluginScript</em> funcionar, com
+        implementações vazias para os <em>callbacks</em> necessários e um sistema de
+        construção para compilar o projeto em um único passo.</p>
+      <p>Vejo vocês lá ;D</p>
+
+
+      <br />
+      <hr class="thin" />
+      <p>
+        Curte esse conteúdo? Patrocine meu trabalho usando o botão abaixo!
+      </p>
+      <iframe src="https://github.com/sponsors/gilzoide/button" title="Sponsor gilzoide" height="32" width="114" style="border: 0; border-radius: 6px;"></iframe>
+
+    </div>
+  </div>
+
+  <div class="flex-stretch"></div>
+
+  <footer class="main-footer justify-center"><a href="https://github.com/gilzoide/">
+      <img src="/images/github.png" alt="GitHub" />
+    </a><a href="https://www.linkedin.com/in/gilzoide/">
+      <img src="/images/linkedin.png" alt="LinkedIn" />
+    </a>
+    <div class="flex-break"></div>
+    <p class="main-footer-copyright">Copyright ⓒ 2025 Gil Barbosa Reis</p>
+  </footer>
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.9.0/highlightjs-line-numbers.min.js"></script>
+  <script src="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/languages/lua.min.js"></script>
+  <script>
+    hljs.addPlugin(new CopyButtonPlugin());
+    hljs.highlightAll()
+    hljs.initLineNumbersOnLoad()
+  </script>
+  <script src="/js/dropdown.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt" dir="ltr">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-witdh, initial-scale=1" />
+  <title>
+    ECS encontra SQL: o mundo como base de dados relacional -
+    gilzoide
+  </title>
+  <link rel="icon" href="/images/about-picture.jpg" type="image/jpeg" />
+  <link rel="alternate" hreflang="en" href="/en/2024-11-01-ecs-databases/" />
+
+  <link rel="alternate" hreflang="pt" href="/pt/2024-11-01-ecs-databases/" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/cards.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/styles/github-dark-dimmed.min.css" integrity="sha512-zcatBMvxa7rT7dDklfjauWsfiSFParF+hRfCdf4Zr40/MmA1gkFcBRbop0zMpvYF3FmznYFgcL8wlcuO/GwHoA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.css" />
+  <link rel="stylesheet" href="/css/code_highlight.css" />
+</head>
+
+<body>
+  <nav class="main-nav">
+    <ul>
+      <li><a class="nav-text" href="/pt/">Blog</a></li>
+      <li><a class="nav-text" href="/pt/about/">Sobre</a></li>
+      <li class="dropdown-button">
+        <button class="nav-icon">
+          <img src="/images/locale-language.png" />
+        </button>
+        <div class="dropdown">
+          <a class="nav-text" href="/en/2024-11-01-ecs-databases/" lang="en" hreflang="en">English</a>
+
+          <a class="nav-text nav-active" href="" lang="pt" hreflang="pt">Português</a>
+        </div>
+      </li>
+    </ul>
+  </nav>
+
+  <div class="justify-center">
+    <div class="main-content">
+
+      <h2 class="card-title">
+        ECS encontra SQL: o mundo como base de dados relacional</h2>
+      <span class="card-meta">2024-11-01&ensp; | &ensp;
+        <div>
+          <a class="decorated-link card-tag">ECS</a>
+          <a class="decorated-link card-tag">SQL</a>
+        </div>
+      </span>
+
+      <blockquote>
+        <p>Originalmente publicado em <a href="https://github.com/gilzoide/ecsql/blob/main/articles/01-ecs-databases-pt.md">https://github.com/gilzoide/ecsql/blob/main/articles/01-ecs-databases-pt.md</a></p>
+      </blockquote>
+
+      <blockquote>
+        <p>Nota: esse documento assume que você tenha conhecimentos básicos de SQL</p>
+      </blockquote>
+      <h2 id="ecs%3A-o-b%C3%A1sico" tabindex="-1"><a class="header-anchor" href="#ecs%3A-o-b%C3%A1sico">ECS: o básico</a></h2>
+      <p>Entidade Componente Sistema, ou ECS, é um padrão de projeto que provê reusabilidade de código ao separar a lógica de negócio dos dados, comumente usado em jogos.
+        Projetos ECS são compostos de:</p>
+      <ul>
+        <li>Entidades: objetos que vivem em um mundo, representados por identificadores únicos.</li>
+        <li>Componentes: estruturas de dados atrelados a entidades.
+          Uma entidade pode ter zero ou mais componentes, que podem ser adicionados ou removidos dela dinamicamente.
+          Por exemplo, um componente &quot;Posição&quot; usado por objetos no espaço 3D poderiam ter 3 propriedades numéricas &quot;x&quot;, &quot;y&quot; e &quot;z&quot;.</li>
+        <li>Sistemas: funções que implementam a lógica de negócio, aplicadas seletivamente a entidades que possuam um conjunto específico de componentes.
+          Por exemplo, um sistema &quot;Mover&quot; que move entidades no espaço 3D poderia ser aplicado somente a entidades que possuem pelo menos o componente &quot;Posição&quot; e o componente &quot;Velocidade&quot;.</li>
+        <li>Mundo: um conjunto de dados de ECS, composto pelas entidades e seus componentes.</li>
+      </ul>
+      <p>Para informações mais detalhadas sobre conceitos do padrão ECS, recomendo a letura do <a href="https://www.flecs.dev/ecs-faq/">ECS FAQ</a> (em Inglês).</p>
+      <h2 id="ecs-e-bases-de-dados" tabindex="-1"><a class="header-anchor" href="#ecs-e-bases-de-dados">ECS e bases de dados</a></h2>
+      <p>Um mundo de ECS pode ser enxergado como uma base de dados, que mantém os dados das entidades existentes e seus componentes.
+        O mundo é consultado pelos sistemas de modo que somente as entidades que possuem o conjunto certo de componentes sejam processadas, usando uma espécie de operação <em>JOIN</em> entre diferentes componentes.
+        Componentes podem ser adicionados e removidos de entidades em uma relação um-pra-um (1:1) ou um-pra-muitos (1:N).</p>
+      <p>Pensando nessa analogia de mundos ECS como bases de dados, e se a gente implementasse um <em>framework</em> de ECS utilizando um banco de dados SQL, por exemplo <a href="https://sqlite.org">SQLite</a>?</p>
+      <p>Os pros:</p>
+      <ul>
+        <li>Com SQL, conseguimos não só consultar um conjunto específico de componentes, mas podemos filtrá-los baseado nos valores das suas colunas.
+          Por exemplo, podemos consultar por valores de enumeração específicos em componentes que implementam máquinas de estados.</li>
+        <li>Podemos utilizar uma base de dados em memória ou operar diretamente em arquivos.
+          Usar arquivos é potencialmente mais lento, já que requer operações de escrita e leitura no sistema de arquivos, mas é uma funcionalidade que pode ser útil.
+          Por exemplo, salvar o estado do mundo em disco permite que vejamos o estado final da aplicação após um <em>crash</em>.</li>
+        <li>Podemos salvar e carregar todos os dados de um mundo utilizando a <a href="https://www.sqlite.org/backup.html">API de backup do SQLite</a>, implementando facilmente a funcionalidade de <em>quick save</em> e <em>quick load</em>.</li>
+        <li>Já que os dados do mundo são operados usando SQL, podemos implementar sistemas em diferentes linguagens de programação e todas elas conseguem acessar os mesmos dados: basta cada uma manter uma conexão com a mesma base de dados compartilhada.
+          Isso é especialmente útil para desenvolver funcionalidades específicas de plataforma e sistemas de scripting.</li>
+      </ul>
+      <p>Os contras:</p>
+      <ul>
+        <li>Mesmo que evitemos a leitura e escrita em disco usando uma base de dados em memória, consultar os dados usando SQL deve ser mais lento do que as estruturas de dados especializadas que outros <em>frameworks</em> utilizam, talvez ordens de magnitude mais lento.
+          Um dos benefícios do padrão ECS é possibilitar um <em>layout</em> dos dados que otimiza o uso da memória <em>cache</em> do processador, de modo que iterar e alterar componentes seja bem rápido.</li>
+        <li>Alguns tipos de dados, como ponteiros e outras estruturas nativas, não possuem uma representação direta em SQL.</li>
+        <li>Usuários precisam saber SQL para aproveitar essa implementação ao máximo.</li>
+      </ul>
+      <p>Mesmo que uma implementação de ECS utilizando SQL provavelmente fique mais lenta do que as implementações especializadas que existem por aí, SQLite é muito rápido no geral e provavelmente vai ser rápido o suficiente para muitos projetos de jogos, então quero experimentar essa ideia e ver o quão longe ela vai.
+        Esse <em>framework</em> experimental de ECS baseado em SQLite se chamará <strong>ECSQL</strong>.</p>
+      <h2 id="representando-entidades-em-sql" tabindex="-1"><a class="header-anchor" href="#representando-entidades-em-sql">Representando entidades em SQL</a></h2>
+      <p>Em ECS, entidades são representadas por identificadores únicos, normalmente números inteiros.
+        Para representar entidades em SQL, basta criarmos uma tabela <code>entity</code> que mantém as entidades existentes, representadas por seu ID numérico:</p>
+      <pre><code class="language-sql">CREATE TABLE entity (
+  id INTEGER PRIMARY KEY
+);
+</code></pre>
+      <h2 id="representando-componentes-em-sql" tabindex="-1"><a class="header-anchor" href="#representando-componentes-em-sql">Representando componentes em SQL</a></h2>
+      <p>Componentes são estruturas de dados que podem ser atreladas a entidades.
+        Todos os componentes precisam estar associados a uma entidade existente.
+        Quando a entidade for apagada, seus componentes devem ser apagados junto com ela.</p>
+      <p>Para mim, o melhor jeito de representar componentes em SQL é criando uma tabela para cada um.</p>
+      <ul>
+        <li>Cada instância de um componente é identificada pelo ID da entidade a qual ela pertence.</li>
+        <li>Para consultar um conjunto de componentes para usarmos em um sistema, tudo o que precisamos é fazer <code>JOIN</code> em todas essas tabelas utilizando o ID da entidade.</li>
+        <li>Para ter certeza que componentes são apagados junto com a entidade a qual pertence, basta utilizarmos uma chave estrangeira com <code>ON DELETE CASCADE</code> e SQLite vai apagar os componentes automaticamente quando sua entidade for apagada.</li>
+      </ul>
+      <p>A base para qualquer componente pode ser definida da seguinte forma:</p>
+      <pre><code class="language-sql">CREATE TABLE component (
+  -- ID da entidade a qual pertence
+  -- &quot;PRIMARY KEY&quot;: componentes são identificados pelo ID da sua entidade
+  -- &quot;REFERENCES entity(id)&quot;: chave estrangeira, relacionamento 1:1
+  -- &quot;ON DELETE CASCADE&quot;: componente será apagado quando sua entidade for apagada
+  entity_id INTEGER PRIMARY KEY REFERENCES entity(id) ON DELETE CASCADE
+);
+</code></pre>
+      <p>Por exemplo, o componente &quot;Posição&quot; para objetos 3D poderia ser definido assim:</p>
+      <pre><code class="language-sql">CREATE TABLE position (
+  entity_id INTEGER PRIMARY KEY REFERENCES entity(id) ON DELETE CASCADE,
+
+  -- Eixos de posição em 3D, todos com valor padrão 0
+  x DEFAULT 0,
+  y DEFAULT 0,
+  z DEFAULT 0
+);
+</code></pre>
+      <p>Como um outro exemplo, o componente &quot;Velocidade&quot; poderia ser definido assim:</p>
+      <pre><code class="language-sql">CREATE TABLE velocity (
+  entity_id INTEGER PRIMARY KEY REFERENCES entity(id) ON DELETE CASCADE,
+
+  -- Valor de velocidade, em m/s
+  value DEFAULT 0
+);
+</code></pre>
+      <h2 id="consultando-componentes-em-sistemas" tabindex="-1"><a class="header-anchor" href="#consultando-componentes-em-sistemas">Consultando componentes em sistemas</a></h2>
+      <p>Os sistemas em si não são armazenados na base de dados SQLile, mas utilizam SQL para consultar os componentes.
+        Vamos usar o sistema &quot;Mover&quot; como exemplo mais uma vez, que é aplicado a entidades que possuem tanto o componente &quot;Posição&quot; quanto o componente &quot;Velocidade&quot; descritos acima.
+        Podemos iterar sobre as entidades que possuem ambos os componentes utilizando a seguinte consulta:</p>
+      <pre><code class="language-sql">SELECT 
+  entity_id,
+  position.x, position.y, position.z,
+  velocity.value
+FROM position
+JOIN velocity USING(entity_id);
+</code></pre>
+      <p>Podemos também suportar facilmente sistemas onde alguns componentes são obrigatórios, mas outros componentes são opcionais.
+        Para isso, basta trocarmos o <code>JOIN</code> por <code>LEFT JOIN</code> ou <code>RIGHT JOIN</code>, de modo que a consulta retorna <code>NULL</code> pros valores dos componentes que não estão presentes na entidade.</p>
+      <h2 id="conclus%C3%A3o" tabindex="-1"><a class="header-anchor" href="#conclus%C3%A3o">Conclusão</a></h2>
+      <p>Vimos uma breve introdução ao padrão de projeto ECS e como mundos ECS podem ser modelados usando bases de dado relacionais e SQL.</p>
+      <p>No <a href="../2024-12-15-ecsql-prototyping">próximo artigo</a>, começaremos a implementar nosso <em>framework</em> experimental <strong>ECSQL</strong>.
+        Vejo vocês lá!</p>
+
+
+      <br />
+      <hr class="thin" />
+      <p>
+        Curte esse conteúdo? Patrocine meu trabalho usando o botão abaixo!
+      </p>
+      <iframe src="https://github.com/sponsors/gilzoide/button" title="Sponsor gilzoide" height="32" width="114" style="border: 0; border-radius: 6px;"></iframe>
+
+    </div>
+  </div>
+
+  <div class="flex-stretch"></div>
+
+  <footer class="main-footer justify-center"><a href="https://github.com/gilzoide/">
+      <img src="/images/github.png" alt="GitHub" />
+    </a><a href="https://www.linkedin.com/in/gilzoide/">
+      <img src="/images/linkedin.png" alt="LinkedIn" />
+    </a>
+    <div class="flex-break"></div>
+    <p class="main-footer-copyright">Copyright ⓒ 2025 Gil Barbosa Reis</p>
+  </footer>
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.9.0/highlightjs-line-numbers.min.js"></script>
+  <script src="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/languages/sql.min.js"></script>
+  <script>
+    hljs.addPlugin(new CopyButtonPlugin());
+    hljs.highlightAll()
+    hljs.initLineNumbersOnLoad()
+  </script>
+  <script src="/js/dropdown.js"></script>
+</body>
+
+</html>

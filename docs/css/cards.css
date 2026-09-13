@@ -1,0 +1,60 @@
+:root {
+  --card-width: 240px;
+  --project-card-height: calc(var(--card-width) / (5 / 3));
+}
+
+.card {
+  width: 100%;
+  padding-top: 1.5rem;
+  padding-bottom: 1.5rem;
+  align-self: center;
+}
+.card:not(:first-child) {
+  border-top: thin solid var(--content-foreground-separator);
+}
+.card .item {
+  display: flex;
+}
+.card .thumbnail {
+  flex: 0 1 var(--card-width);
+  height: var(--project-card-height);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  border-radius: 6px;
+}
+@media (max-width: 496px) {
+  .card {
+    flex-direction: column;
+  }
+  .card .thumbnail {
+    flex: auto;
+  }
+}
+
+.card-meta {
+  font-size: medium;
+  display: flex;
+  flex-direction: row;
+}
+.card-meta .card-tag:not(:last-child) {
+  margin-right: 0.5ch;
+}
+
+.card .spacing {
+  flex: 0 0 16px;
+}
+.card .description {
+  flex: 1;
+  flex-direction: column;
+  margin: 0;
+}
+.card-title {
+  margin: 0;
+}
+.card-subtitle {
+  margin: 4px 0 8px 0;
+}
+.description p {
+  margin-bottom: 0;
+}

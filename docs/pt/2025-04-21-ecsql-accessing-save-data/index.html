@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="pt" dir="ltr">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-witdh, initial-scale=1" />
+  <title>
+    ECSQL: Acessando dados de save -
+    gilzoide
+  </title>
+  <link rel="icon" href="/images/about-picture.jpg" type="image/jpeg" />
+  <link rel="alternate" hreflang="en" href="/en/2025-04-21-ecsql-accessing-save-data/" />
+
+  <link rel="alternate" hreflang="pt" href="/pt/2025-04-21-ecsql-accessing-save-data/" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/cards.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/styles/github-dark-dimmed.min.css" integrity="sha512-zcatBMvxa7rT7dDklfjauWsfiSFParF+hRfCdf4Zr40/MmA1gkFcBRbop0zMpvYF3FmznYFgcL8wlcuO/GwHoA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.css" />
+  <link rel="stylesheet" href="/css/code_highlight.css" />
+</head>
+
+<body>
+  <nav class="main-nav">
+    <ul>
+      <li><a class="nav-text" href="/pt/">Blog</a></li>
+      <li><a class="nav-text" href="/pt/about/">Sobre</a></li>
+      <li class="dropdown-button">
+        <button class="nav-icon">
+          <img src="/images/locale-language.png" />
+        </button>
+        <div class="dropdown">
+          <a class="nav-text" href="/en/2025-04-21-ecsql-accessing-save-data/" lang="en" hreflang="en">English</a>
+
+          <a class="nav-text nav-active" href="" lang="pt" hreflang="pt">Português</a>
+        </div>
+      </li>
+    </ul>
+  </nav>
+
+  <div class="justify-center">
+    <div class="main-content">
+
+      <h2 class="card-title">
+        ECSQL: Acessando dados de save</h2>
+      <span class="card-meta">2025-04-21&ensp; | &ensp;
+        <div>
+          <a class="decorated-link card-tag">ECS</a>
+          <a class="decorated-link card-tag">SQL</a>
+          <a class="decorated-link card-tag">SQLite</a>
+          <a class="decorated-link card-tag">C++</a>
+          <a class="decorated-link card-tag">SaveData</a>
+          <a class="decorated-link card-tag">Migration</a>
+        </div>
+      </span>
+
+      <blockquote>
+        <p>Originalmente publicado em <a href="https://github.com/gilzoide/ecsql/blob/main/articles/06-accessing-save-data-pt.md">https://github.com/gilzoide/ecsql/blob/main/articles/06-accessing-save-data-pt.md</a></p>
+      </blockquote>
+
+      <p>Não há ferramenta melhor para salvar o progresso dos jogadores do que bancos de dados.
+        Já temos uma conexão a uma base de dados SQLite, então a utilizaremos também para salvar dados de progresso.</p>
+      <h2 id="acessando-a-base-de-dados-de-save" tabindex="-1"><a class="header-anchor" href="#acessando-a-base-de-dados-de-save">Acessando a base de dados de <em>save</em></a></h2>
+      <p>Uma das várias funcionalidades maneiríssimas de SQLite é o suporte a <a href="https://sqlite.org/lang_attach.html">acessar múltiplas bases de dados numa mesma conexão</a>.
+        Com isso, podemos acessar a base de dados de <em>save</em> usando a mesma interface que já utilizamos para acessar os dados de ECS.
+        Nós podemos inclusive fazer <code>JOIN</code> entre dados salvos e dados de ECS, possibilitando a implementação de sistemas que operam em ambas bases de dados ao mesmo tempo.</p>
+      <p>Para anexar uma base de dados à conexão, basta executarmos um comando SQL <code>ATTACH</code>, como por exemplo:</p>
+      <pre><code class="language-sql">ATTACH DATABASE 'save.sqlite3' AS save;
+</code></pre>
+      <p>SQLite vai criar o arquivo da nova base de dados automaticamente se ele ainda não existir.</p>
+      <p>Após isso, podemos usar o prefixo <code>save.</code> para especificar tabelas referentes à base de dados <code>save</code> que acabamos de anexar à conexão.
+        Aqui está um exemplo de tabela com estatísticas de jogo que será salva na base de dados <em>save</em>:</p>
+      <pre><code class="language-sql">CREATE TABLE save.statistics(
+  total_uptime FLOAT DEFAULT 0
+);
+</code></pre>
+      <p>Agora podemos acessar tabelas da base de dados <code>save</code> nos nossos sistemas.
+        Aqui um exemplo de consulta que guarda o tempo de jogo total, persistido entre diferentes sessões de jogo:</p>
+      <pre><code class="language-sql">UPDATE save.statistics
+SET total_uptime = total_uptime + time.delta
+FROM time;
+</code></pre>
+      <p>Note que <code>time</code> é uma tabela que pertence à base de dados de ECS, enquanto <code>save.statistics</code> pertence à base de dados de <em>save</em>.</p>
+      <blockquote>
+        <p>Eu escrevi mais sobre como ECSQL gerencia tempo <a href="../2025-02-04-ecsql-tracking-time">aqui</a></p>
+      </blockquote>
+      <h2 id="migrando-a-base-de-dados" tabindex="-1"><a class="header-anchor" href="#migrando-a-base-de-dados">Migrando a base de dados</a></h2>
+      <p>Conforme a gente desenvolve e lança novas versões do nosso jogo, é comum que precisemos mudar a estrutura dos dados salvos.
+        Como esses dados são persistidos entre sessões, precisamos de um jeito de modificar a base de dados sem perder os dados existentes.
+        Não queremos sumir com os dados e fazer os jogadores terem que começar o jogo do zero, não é mesmo.</p>
+      <p>Uma forma comum de fazer isso é definindo <em>scripts</em> de migração da base de dados.
+        Mantemos uma lista de <em>scripts</em> de migração e os executamos na ordem certa quando o jogo começa, desde que não tenham sido executados ainda.
+        Para sabermos quais <em>scripts</em> já foram executados, mantemos um número de versão na própria base de dados.
+        Aqui está a estrutura de versionamento que ECSQL usa:</p>
+      <pre><code class="language-sql">-- A tabela simplesmente guarda a versão atual
+CREATE TABLE IF NOT EXISTS save.schema_version(version INTEGER);
+
+-- Usar &quot;OR IGNORE&quot; e especificar o &quot;rowid&quot; aqui garante que a
+-- linha é inserida da primeira vez, mas nunca modificada no futuro
+INSERT OR IGNORE INTO save.schema_version(rowid, version) VALUES(1, 0);
+</code></pre>
+      <p>Então por padrão, quando a versão é 0, nenhuma migração foi executada ainda.
+        No código do jogo a gente então checa qual a versão atual e executa as migrações que estão faltando:</p>
+      <pre><code class="language-cpp">int version = world.execute_sql(R&quot;(
+    SELECT version
+    FROM save.schema_version
+)&quot;).get&lt;int&gt;();
+
+if (version &lt; 1) {
+    // Executa migração 1
+    // Por exemplo, cria a tabela &quot;statistics&quot; mencionada acima
+    world.execute_sql_script(R&quot;(
+        CREATE TABLE save.statistics(
+          total_uptime FLOAT DEFAULT 0
+        );
+        INSERT INTO save.statistics DEFAULT VALUES;
+
+        -- Atualiza a versão atual
+        UPDATE save.schema_version
+        SET version = 1
+    )&quot;);
+}
+
+if (version &lt; 2) {
+    // Executa migração 2
+    // Agora queremos manter o número de sessões em &quot;statistics&quot;
+    world.execute_sql_script(R&quot;(
+        ALTER TABLE save.statistics ADD COLUMN session_count INTEGER DEFAULT 0;
+
+        -- Atualiza a versão atual
+        UPDATE save.schema_version
+        SET version = 2
+    )&quot;);
+}
+
+// ...
+</code></pre>
+      <p>Assim como criar e alterar tabelas, podemos também criar e alterar índices, <em>constraints</em>, <em>triggers</em>, etc.</p>
+      <h2 id="conclus%C3%A3o" tabindex="-1"><a class="header-anchor" href="#conclus%C3%A3o">Conclusão</a></h2>
+      <p>Hoje discutimos como salvar dados de progresso do jogador usando uma nova base de dados SQLite e como acessar esses dados em conjunto com os dados de ECS nos nossos sistemas.
+        Vimos também um jeito simples de gerenciar e aplicar migrações à base de dados de <em>save</em>.</p>
+      <p>Espero que tenha persistido essa informação na sua memória, até a próxima!</p>
+
+
+      <br />
+      <hr class="thin" />
+      <p>
+        Curte esse conteúdo? Patrocine meu trabalho usando o botão abaixo!
+      </p>
+      <iframe src="https://github.com/sponsors/gilzoide/button" title="Sponsor gilzoide" height="32" width="114" style="border: 0; border-radius: 6px;"></iframe>
+
+    </div>
+  </div>
+
+  <div class="flex-stretch"></div>
+
+  <footer class="main-footer justify-center"><a href="https://github.com/gilzoide/">
+      <img src="/images/github.png" alt="GitHub" />
+    </a><a href="https://www.linkedin.com/in/gilzoide/">
+      <img src="/images/linkedin.png" alt="LinkedIn" />
+    </a>
+    <div class="flex-break"></div>
+    <p class="main-footer-copyright">Copyright ⓒ 2025 Gil Barbosa Reis</p>
+  </footer>
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.9.0/highlightjs-line-numbers.min.js"></script>
+  <script src="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/languages/cpp.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/languages/sql.min.js"></script>
+  <script>
+    hljs.addPlugin(new CopyButtonPlugin());
+    hljs.highlightAll()
+    hljs.initLineNumbersOnLoad()
+  </script>
+  <script src="/js/dropdown.js"></script>
+</body>
+
+</html>

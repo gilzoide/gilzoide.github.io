@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt" dir="ltr">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-witdh, initial-scale=1" />
+  <title>
+    ECSQL: Registrando componentes automaticamente -
+    gilzoide
+  </title>
+  <link rel="icon" href="/images/about-picture.jpg" type="image/jpeg" />
+  <link rel="alternate" hreflang="en" href="/en/2025-02-01-ecsql-autoregister-components/" />
+
+  <link rel="alternate" hreflang="pt" href="/pt/2025-02-01-ecsql-autoregister-components/" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/cards.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/styles/github-dark-dimmed.min.css" integrity="sha512-zcatBMvxa7rT7dDklfjauWsfiSFParF+hRfCdf4Zr40/MmA1gkFcBRbop0zMpvYF3FmznYFgcL8wlcuO/GwHoA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.css" />
+  <link rel="stylesheet" href="/css/code_highlight.css" />
+</head>
+
+<body>
+  <nav class="main-nav">
+    <ul>
+      <li><a class="nav-text" href="/pt/">Blog</a></li>
+      <li><a class="nav-text" href="/pt/about/">Sobre</a></li>
+      <li class="dropdown-button">
+        <button class="nav-icon">
+          <img src="/images/locale-language.png" />
+        </button>
+        <div class="dropdown">
+          <a class="nav-text" href="/en/2025-02-01-ecsql-autoregister-components/" lang="en" hreflang="en">English</a>
+
+          <a class="nav-text nav-active" href="" lang="pt" hreflang="pt">Português</a>
+        </div>
+      </li>
+    </ul>
+  </nav>
+
+  <div class="justify-center">
+    <div class="main-content">
+
+      <h2 class="card-title">
+        ECSQL: Registrando componentes automaticamente</h2>
+      <span class="card-meta">2025-02-01&ensp; | &ensp;
+        <div>
+          <a class="decorated-link card-tag">ECS</a>
+          <a class="decorated-link card-tag">C++</a>
+          <a class="decorated-link card-tag">GlobalVariables</a>
+          <a class="decorated-link card-tag">LinkedList</a>
+        </div>
+      </span>
+
+      <blockquote>
+        <p>Originalmente publicado em <a href="https://github.com/gilzoide/ecsql/blob/main/articles/03-autoregister-components-pt.md">https://github.com/gilzoide/ecsql/blob/main/articles/03-autoregister-components-pt.md</a></p>
+      </blockquote>
+
+      <p>Depois de prototipar um pouco, percebi que registrar componentes manualmente é uma tarefa muito entediante.
+        Eu estava criando todos os componentes como variáveis globais no C++, daí registrado elas uma a uma usando <code>mundo.register_component(componente)</code> na função <code>main</code> da aplicação.</p>
+      <p>Para simplificar, criei uma lista ligada global que contém referências a cada uma das instâncias de componente:</p>
+      <pre><code class="language-cpp">class Component {
+private:
+    // 1. Declare a lista global
+    inline static std::forward_list&lt;Component *&gt; lista_global;
+
+public:
+    // 2. Insira cada componente à lista em seu construtor
+    Component(...) {
+        lista_global.push_front(this);
+    }
+
+    // 3. Crie o método &quot;foreach&quot; que aplica uma função às instâncias
+    template&lt;typename Fn&gt;
+    static void foreach(Fn&amp;&amp; f) {
+        for (auto it : lista_global) {
+            f(it);
+        }
+    }
+};
+</code></pre>
+      <p>Daí registrei todos os componentes usando a função <code>foreach</code>:</p>
+      <pre><code class="language-cpp">ecsql::Component::foreach([&amp;](ecsql::Component *componente) {
+    mundo.register_component(*componente);
+});
+</code></pre>
+      <p>E é isso!
+        Agora, pra criar compomentes, basta definí-los num arquivo C++, e serão registrados automaticamente!</p>
+      <pre><code class="language-cpp">// Exemplo: meu_componente.cpp
+ecsql::Component MeuComponente {
+    &quot;MeuComponente&quot;,
+    {
+        &quot;campo1&quot;,
+        &quot;campo2&quot;,
+    },
+};
+
+// Agora MeuComponente está na lista global e será registrado automaticamente
+</code></pre>
+      <h2 id="sistemas" tabindex="-1"><a class="header-anchor" href="#sistemas">Sistemas</a></h2>
+      <p>Uma coisa importante sobre variáveis globais e C++ é que elas são construídas na ordem em que são declaradas dentro de uma mesma unidade de tradução (cada arquivo .cpp é uma unidade de tradução na maioria das vezes), mas a ordem é indefinida entre unidades de tradução diferentes.</p>
+      <p>Isso significa que só podemos usar essa estratégia se a order de construção dos objetos não for relevante.
+        Componentes podem ser registrados basicamente em qualquer ordem, então é tranquilo usar uma lista global para eles.
+        Para sistemas, por outro lado, pode ser interessante definirmos a ordem de registro manualmente, já que a ordem de execução deles dentro de um mesmo <em>frame</em> é a mesma ordem de registro.
+        Por causa disso, não usei essa técnica com sistemas, que atualmente são registrados um por um.</p>
+      <h2 id="sistemas-gancho" tabindex="-1"><a class="header-anchor" href="#sistemas-gancho">Sistemas gancho</a></h2>
+      <p>Sistemas gancho, por outro lado, também podem ser registrados em qualquer ordem.
+        Não acho que vou precisar preocupar com a ordem de execução de sistemas gancho nesse projeto, então usei a mesma tática da lista global com eles também.</p>
+      <h2 id="conclus%C3%A3o" tabindex="-1"><a class="header-anchor" href="#conclus%C3%A3o">Conclusão</a></h2>
+      <p>É isso, trabalhei nisso para ter menos trabalho no futuro.</p>
+      <p>Nóis \o/</p>
+
+
+      <br />
+      <hr class="thin" />
+      <p>
+        Curte esse conteúdo? Patrocine meu trabalho usando o botão abaixo!
+      </p>
+      <iframe src="https://github.com/sponsors/gilzoide/button" title="Sponsor gilzoide" height="32" width="114" style="border: 0; border-radius: 6px;"></iframe>
+
+    </div>
+  </div>
+
+  <div class="flex-stretch"></div>
+
+  <footer class="main-footer justify-center"><a href="https://github.com/gilzoide/">
+      <img src="/images/github.png" alt="GitHub" />
+    </a><a href="https://www.linkedin.com/in/gilzoide/">
+      <img src="/images/linkedin.png" alt="LinkedIn" />
+    </a>
+    <div class="flex-break"></div>
+    <p class="main-footer-copyright">Copyright ⓒ 2025 Gil Barbosa Reis</p>
+  </footer>
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.9.0/highlightjs-line-numbers.min.js"></script>
+  <script src="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/languages/cpp.min.js"></script>
+  <script>
+    hljs.addPlugin(new CopyButtonPlugin());
+    hljs.highlightAll()
+    hljs.initLineNumbersOnLoad()
+  </script>
+  <script src="/js/dropdown.js"></script>
+</body>
+
+</html>

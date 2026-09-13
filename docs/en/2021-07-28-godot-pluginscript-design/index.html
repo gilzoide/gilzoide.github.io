@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-witdh, initial-scale=1" />
+  <title>
+    Designing a Godot PluginScript for Lua -
+    gilzoide
+  </title>
+  <link rel="icon" href="/images/about-picture.jpg" type="image/jpeg" />
+  <link rel="alternate" hreflang="en" href="/en/2021-07-28-godot-pluginscript-design/" />
+
+  <link rel="alternate" hreflang="pt" href="/pt/2021-07-28-godot-pluginscript-design/" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/cards.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/styles/github-dark-dimmed.min.css" integrity="sha512-zcatBMvxa7rT7dDklfjauWsfiSFParF+hRfCdf4Zr40/MmA1gkFcBRbop0zMpvYF3FmznYFgcL8wlcuO/GwHoA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.css" />
+  <link rel="stylesheet" href="/css/code_highlight.css" />
+</head>
+
+<body>
+  <nav class="main-nav">
+    <ul>
+      <li><a class="nav-text" href="/en/">Blog</a></li>
+      <li><a class="nav-text" href="/en/about/">About</a></li>
+      <li class="dropdown-button">
+        <button class="nav-icon">
+          <img src="/images/locale-language.png" />
+        </button>
+        <div class="dropdown">
+          <a class="nav-text nav-active" href="" lang="en" hreflang="en">English</a>
+
+          <a class="nav-text" href="/pt/2021-07-28-godot-pluginscript-design/" lang="pt" hreflang="pt">Português</a>
+        </div>
+      </li>
+    </ul>
+  </nav>
+
+  <div class="justify-center">
+    <div class="main-content">
+
+      <h2 class="card-title">
+        Designing a Godot PluginScript for Lua</h2>
+      <span class="card-meta">2021-07-28&ensp; | &ensp;
+        <div>
+          <a class="decorated-link card-tag">Godot</a>
+          <a class="decorated-link card-tag">Lua</a>
+          <a class="decorated-link card-tag">GDNative</a>
+          <a class="decorated-link card-tag">PluginScript</a>
+          <a class="decorated-link card-tag">language bindings</a>
+        </div>
+      </span>
+
+      <blockquote>
+        <p>Originally published at <a href="https://github.com/gilzoide/godot-lua-pluginscript/blob/main/extras/articles/1-design-en.md">https://github.com/gilzoide/godot-lua-pluginscript/blob/main/extras/articles/1-design-en.md</a></p>
+      </blockquote>
+
+      <p>This is the first article in a series about how I'm approaching the development
+        of a plugin for using the <a href="https://www.lua.org/">Lua</a> language in
+        <a href="https://godotengine.org/">Godot game engine</a>.
+      </p>
+      <p>Lua is a simple and small, yet powerful and flexible, scripting language.
+        Although it <a href="https://docs.godotengine.org/en/stable/about/faq.html#what-were-the-motivations-behind-creating-gdscript">isn't fit for every scenario</a>,
+        it is certainly a great tool for scripting.
+        Combining that with the power of <a href="https://luajit.org/">LuaJIT</a>,
+        one of the fastest dynamic language implementations out there, we can also
+        <a href="https://luajit.org/ext_ffi.html">call external C functions via the Foreign Function Interface (FFI)</a>!
+      </p>
+      <p>With the dynamic nature of scripting in Godot, all supported languages
+        can seamlessly communicate with each other and thus we can choose to use the
+        language that best fits the task in hand for each script.
+        By the means of <a href="https://docs.godotengine.org/en/stable/getting_started/step_by_step/signals.html">signals</a>
+        and the methods <a href="https://docs.godotengine.org/en/stable/classes/class_object.html#class-object-method-call">call</a>,
+        <a href="https://docs.godotengine.org/en/stable/classes/class_object.html#id1">get</a>
+        and <a href="https://docs.godotengine.org/en/stable/classes/class_object.html#id4">set</a>,
+        any object can communicate with another one, regardless of the
+        source language.
+      </p>
+      <p>To make Lua be recognized as one of the supported scripting languages for Godot
+        objects, we will create a PluginScript, which is one of the uses of
+        <a href="https://docs.godotengine.org/en/stable/getting_started/step_by_step/scripting.html#gdnative-c">GDNative</a>,
+        the native plugin C API provided by the engine to extend all sorts of
+        engine systems, such as the scripting one.
+        One pro of this approach is that only the plugin have to be compiled,
+        so anyone with a standard prebuilt version of Godot can use it! =D
+      </p>
+      <h2 id="goals" tabindex="-1"><a class="header-anchor" href="#goals">Goals</a></h2>
+      <ul>
+        <li>Provide support for the Lua language in Godot in a way that does not require
+          compiling the engine from scratch</li>
+        <li>Be able to seamlessly communicate with any other language supported by Godot,
+          like GDScript, Visual Script and C#, in an idiomatic way</li>
+        <li>Simple script description interface that doesn't need <code>require</code>ing anything</li>
+        <li>Support for Lua 5.2+ and LuaJIT</li>
+        <li>Have a simple build process, where anyone with the cloned source code and
+          installed build system + toolchain can build the project in a single step</li>
+      </ul>
+      <h2 id="non-goals" tabindex="-1"><a class="header-anchor" href="#non-goals">Non-goals</a></h2>
+      <ul>
+        <li>Provide calls to core Godot classes' methods via native method bindings</li>
+        <li>Support multithreading on the Lua side</li>
+      </ul>
+      <h2 id="script-example" tabindex="-1"><a class="header-anchor" href="#script-example">Script example</a></h2>
+      <p>This is an example of how a Lua script will look like. There are comments regarding
+        some design decisions, which may change during development.</p>
+      <pre><code class="language-lua">-- Class definitions are regular Lua tables, to be returned from the script
+local MyClass = {}
+
+-- Optional: set class as tool, defaults to false
+MyClass.is_tool = true
+
+-- Optional: set base class by name, defaults to 'Reference'
+MyClass.extends = 'Node'
+
+-- Optional: give your class a name
+MyClass.class_name = 'MyClass'
+
+-- Declare signals
+MyClass.something_happened = signal()
+MyClass.something_happened_with_args = signal(&quot;arg1&quot;, &quot;arg2&quot;)
+
+-- Values defined in table are registered as properties of the class
+MyClass.some_prop = 42
+
+-- The `property` function adds metadata to defined properties,
+-- like setter and getter functions
+MyClass.some_prop_with_details = property {
+  -- [1] or [&quot;default&quot;] or [&quot;default_value&quot;] = property default value
+  5,
+  -- [2] or [&quot;type&quot;] = variant type, optional, inferred from default value
+  -- All Godot variant type names are defined globally as written in
+  -- GDScript, like bool, int, float, String, Array, Vector2, etc...
+  -- Notice that Lua &lt;= 5.2 does not differentiate integers from float
+  -- numbers, so we should always specify `int` where appropriate
+  -- or use `int(5)` in the default value instead
+  type = int,
+  -- [&quot;set&quot;] or [&quot;setter&quot;] = setter function, optional
+  set = function(self, value)
+    self.some_prop_with_details = value
+    -- Indexing `self` with keys undefined in script will search base
+    -- class for methods and properties
+    self:emit_signal(&quot;something_happened_with_args&quot;, &quot;some_prop_with_details&quot;, value)
+  end,
+  -- [&quot;get&quot;] or [&quot;getter&quot;] = getter function, optional
+  get = function(self)
+    return self.some_prop_with_details
+  end,
+  -- [&quot;usage&quot;] = property usage, from enum godot_property_usage_flags
+  -- optional, default to GD.PROPERTY_USAGE_DEFAULT
+  usage = GD.PROPERTY_USAGE_DEFAULT,
+  -- [&quot;hint&quot;] = property hint, from enum godot_property_hint
+  -- optional, default to GD.PROPERTY_HINT_NONE
+  hint = GD.PROPERTY_HINT_RANGE,
+  -- [&quot;hint_string&quot;] = property hint text, only required for some hints
+  hint_string = '1,10',
+  -- [&quot;rset_mode&quot;] = property remote set mode, from enum godot_method_rpc_mode
+  -- optional, default to GD.RPC_MODE_DISABLED
+  rset_mode = GD.RPC_MODE_MASTER,
+}
+
+-- Functions defined in table are public methods
+function MyClass:_init()  -- `function t:f(...)` is an alias for `function t.f(self, ...)`
+  -- Singletons are available globally
+  local os_name = OS:get_name()
+  print(&quot;MyClass instance initialized! Running on a &quot; .. os_name .. &quot; system&quot;)
+end
+
+function MyClass:some_prop_doubled()
+  return self.some_prop * 2
+end
+
+-- In the end, table with class declaration must be returned from script
+return MyClass
+</code></pre>
+      <h2 id="implementation-design-details" tabindex="-1"><a class="header-anchor" href="#implementation-design-details">Implementation design details</a></h2>
+      <p>PluginScripts have three important concepts: the Language Description,
+        Script Manifest and Instances.</p>
+      <p>Let's check out what each layer is and how they will behave from a high
+        level perspective:</p>
+      <h3 id="language-description" tabindex="-1"><a class="header-anchor" href="#language-description">Language description</a></h3>
+      <p>The language description tells Godot how to initialize and finalize our
+        language runtime, as well as how to load script manifests from source
+        files.</p>
+      <p>When initializing the runtime, a new <a href="https://www.lua.org/manual/5.4/manual.html#lua_State">lua_State</a>
+        will be created and Godot functionality setup in it.
+        The Lua Virtual Machine (VM) will use engine memory management routines, so
+        that memory is tracked by the performance monitors in debug builds of the
+        game/application.
+        All scripts will share this same state.</p>
+      <p>There will be a global table named <code>GD</code> with some Godot specific
+        functions, such as <a href="https://docs.godotengine.org/en/stable/classes/class_%40gdscript.html#class-gdscript-method-load">load</a>,
+        <a href="https://docs.godotengine.org/en/stable/classes/class_%40gdscript.html#class-gdscript-method-print">print</a>,
+        <a href="https://docs.godotengine.org/en/stable/classes/class_%40gdscript.html#class-gdscript-method-push-error">push_error</a>,
+        <a href="https://docs.godotengine.org/en/stable/classes/class_%40gdscript.html#class-gdscript-method-push-warning">push_warning</a>
+        and <a href="https://docs.godotengine.org/en/stable/classes/class_%40gdscript.html#class-gdscript-method-yield">yield</a>.
+        Lua's global <code>print</code> function will be set to <code>GD.print</code> and
+        <a href="https://www.lua.org/manual/5.4/manual.html#lua_WarnFunction">Lua 5.4 warning function</a>
+        will behave like a <code>push_warning</code> call.
+      </p>
+      <p>Functions that expect file names, like <a href="https://www.lua.org/manual/5.4/manual.html#pdf-loadfile">loadfile</a>
+        and <a href="https://www.lua.org/manual/5.4/manual.html#pdf-io.open">io.open</a>,
+        will be patched to accept paths in the format <a href="https://docs.godotengine.org/en/stable/tutorials/io/data_paths.html#resource-path"><code>res://*</code></a>
+        and <a href="https://docs.godotengine.org/en/stable/tutorials/io/data_paths.html#user-path-persistent-data"><code>user://*</code></a>.
+        Also, a <a href="https://www.lua.org/manual/5.4/manual.html#pdf-package.searchers">package searcher</a>
+        will be added so that Lua can <a href="https://www.lua.org/manual/5.4/manual.html#pdf-require">require</a>
+        modules from paths relative to <code>res://</code>.</p>
+      <p>Language finalization will simply <a href="https://www.lua.org/manual/5.4/manual.html#lua_close">lua_close</a> the state.</p>
+      <h3 id="script-manifest" tabindex="-1"><a class="header-anchor" href="#script-manifest">Script manifest</a></h3>
+      <p>Script manifests hold metadata about classes, such as defined signals,
+        properties and methods, whether class is <a href="https://docs.godotengine.org/en/stable/tutorials/misc/running_code_in_the_editor.html">tool</a>
+        and its base class name.</p>
+      <p>In Lua, this information will be stored in Lua tables indexed by the
+        scripts' path.</p>
+      <p>When initializing a script, its source code will be loaded and executed.
+        Scripts must return a table, which defines the class metadata.
+        Functions declared in the table are registered as class methods and
+        other variables are declared as properties or signals.</p>
+      <p>Script finalization will destroy the manifest table.</p>
+      <h3 id="instances" tabindex="-1"><a class="header-anchor" href="#instances">Instances</a></h3>
+      <p>When a script is attached to an object, the engine will call our
+        PluginScript to initialize the instance data and when the object gets
+        destroyed or gets the script removed, we get to finalize the data.</p>
+      <p>In Lua, instance data will be stored in Lua tables indexed by the
+        instance owner object's memory address.</p>
+      <p>When instances are indexed with a key that is not present, methods and
+        property default values will be searched in the script manifest and its
+        base class, in that order.
+        This table will be passed to methods as their first argument, as if
+        using Lua's method call notation: <code>instance:method(...)</code>.</p>
+      <p>Instance finalization will destroy the data table.</p>
+      <h2 id="wrapping-up" tabindex="-1"><a class="header-anchor" href="#wrapping-up">Wrapping up</a></h2>
+      <p>With this high level design in place, we can now start implementing the
+        plugin! I have created a Git repository for it hosted at
+        <a href="https://github.com/gilzoide/godot-lua-pluginscript">https://github.com/gilzoide/godot-lua-pluginscript</a>.
+      </p>
+      <p>In the <a href="../2021-08-04-godot-pluginscript-infrastructure">next post</a> I'll discuss how to build the
+        necessary infrastructure for the PluginScript to work, with stubs to the
+        necessary callbacks and a build system that compiles the project in a
+        single step.</p>
+      <p>See you there ;D</p>
+
+
+      <br />
+      <hr class="thin" />
+      <p>
+        Like this content? Sponsor my work using the button below!
+      </p>
+      <iframe src="https://github.com/sponsors/gilzoide/button" title="Sponsor gilzoide" height="32" width="114" style="border: 0; border-radius: 6px;"></iframe>
+
+    </div>
+  </div>
+
+  <div class="flex-stretch"></div>
+
+  <footer class="main-footer justify-center"><a href="https://github.com/gilzoide/">
+      <img src="/images/github.png" alt="GitHub" />
+    </a><a href="https://www.linkedin.com/in/gilzoide/">
+      <img src="/images/linkedin.png" alt="LinkedIn" />
+    </a>
+    <div class="flex-break"></div>
+    <p class="main-footer-copyright">Copyright ⓒ 2025 Gil Barbosa Reis</p>
+  </footer>
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.9.0/highlightjs-line-numbers.min.js"></script>
+  <script src="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/languages/lua.min.js"></script>
+  <script>
+    hljs.addPlugin(new CopyButtonPlugin());
+    hljs.highlightAll()
+    hljs.initLineNumbersOnLoad()
+  </script>
+  <script src="/js/dropdown.js"></script>
+</body>
+
+</html>

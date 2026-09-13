@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="pt" dir="ltr">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-witdh, initial-scale=1" />
+  <title>
+    ECSQL: Acompanhando o tempo -
+    gilzoide
+  </title>
+  <link rel="icon" href="/images/about-picture.jpg" type="image/jpeg" />
+  <link rel="alternate" hreflang="en" href="/en/2025-02-04-ecsql-tracking-time/" />
+
+  <link rel="alternate" hreflang="pt" href="/pt/2025-02-04-ecsql-tracking-time/" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/cards.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/styles/github-dark-dimmed.min.css" integrity="sha512-zcatBMvxa7rT7dDklfjauWsfiSFParF+hRfCdf4Zr40/MmA1gkFcBRbop0zMpvYF3FmznYFgcL8wlcuO/GwHoA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.css" />
+  <link rel="stylesheet" href="/css/code_highlight.css" />
+</head>
+
+<body>
+  <nav class="main-nav">
+    <ul>
+      <li><a class="nav-text" href="/pt/">Blog</a></li>
+      <li><a class="nav-text" href="/pt/about/">Sobre</a></li>
+      <li class="dropdown-button">
+        <button class="nav-icon">
+          <img src="/images/locale-language.png" />
+        </button>
+        <div class="dropdown">
+          <a class="nav-text" href="/en/2025-02-04-ecsql-tracking-time/" lang="en" hreflang="en">English</a>
+
+          <a class="nav-text nav-active" href="" lang="pt" hreflang="pt">Português</a>
+        </div>
+      </li>
+    </ul>
+  </nav>
+
+  <div class="justify-center">
+    <div class="main-content">
+
+      <h2 class="card-title">
+        ECSQL: Acompanhando o tempo</h2>
+      <span class="card-meta">2025-02-04&ensp; | &ensp;
+        <div>
+          <a class="decorated-link card-tag">ECS</a>
+          <a class="decorated-link card-tag">SQL</a>
+          <a class="decorated-link card-tag">C++</a>
+          <a class="decorated-link card-tag">GameLoop</a>
+          <a class="decorated-link card-tag">DeltaTime</a>
+        </div>
+      </span>
+
+      <blockquote>
+        <p>Originalmente publicado em <a href="https://github.com/gilzoide/ecsql/blob/main/articles/04-tracking-time-pt.md">https://github.com/gilzoide/ecsql/blob/main/articles/04-tracking-time-pt.md</a></p>
+      </blockquote>
+
+      <p>Uma coisa que você vai ver em basicamente qualquer motor de jogos é que eles sempre disponibilizam o tempo que passou desde o último quadro (em inglês, <em>frame</em>), o famoso <em>&quot;delta time&quot;</em>.
+        Ele é usado para converter entre <em>frames</em> e tempo real, possibilitando que jogos executem na mesma velocidade independente de quantos <em>frames</em> são processados por segundo.</p>
+      <p>Por exemplo, se movermos um <em>sprite</em> 10 pixels por <em>frame</em>, ele estará movendo a uma velocidade de 600 pixels por segundo se o jogo estiver rodando a 60 <em>frames</em> por segundo (FPS), mas somente 300 pixels/s se rodando a 30 FPS.
+        O jogo pode rodar a 60 FPS num dispositivo potente, mas somente a 30 FPS em outro dispositivo mais fraco, precisamos garantir que a experiência de jogo seja a mesma em ambos os casos.
+        Para garantir uma experiência de jogo consistente, devemos mover o <em>sprite</em> usando uma taxa de pixels por segundo ao invés de pixels por <em>frame</em>.</p>
+      <h2 id="guardando-o-tempo-em-sql" tabindex="-1"><a class="header-anchor" href="#guardando-o-tempo-em-sql">Guardando o tempo em SQL</a></h2>
+      <p>Vamos guardar o tempo delta e o tempo total de jogo (em inglês, <em>uptime</em>) em SQL para que essa informação possa ser utilizada por sistemas.</p>
+      <p>Vamos criar a tabela <em>singleton</em> <code>time</code>.
+        <em>&quot;Singleton&quot;</em> nesse caso significa que nessa tabela só vai existir uma única linha.
+        Sua definição é a seguinte:
+      </p>
+      <pre><code class="language-sql">CREATE TABLE time(
+  delta,
+  uptime
+);
+
+-- Aqui inserimos a única linha da tabela
+-- O tempo ainda não passou, então zeramos ambos os valores
+INSERT INTO time(delta, uptime) VALUES(0, 0);
+</code></pre>
+      <p>Agora no <em>loop</em> do jogo, pegamos o tempo delta atual usando a função <code>GetFrameTime()</code> disponível no raylib e passamos esse valor para a seguinte consulta de UPDATE:</p>
+      <pre><code class="language-sql">UPDATE time
+SET delta = ?1, uptime = uptime + ?1;
+</code></pre>
+      <p>Note que usamos <code>?1</code> para atualizar ambos os valores de <code>delta</code> e <code>uptime</code>, o que significa que o mesmo valor será usado nos dois casos.
+        Isso faz com que <code>uptime</code> sempre seja incrementado pelo valor de <code>delta</code> a cada <em>frame</em>, de modo que conterá a soma dos valores de <code>delta</code> de todos os <em>frames</em>, resultando no tempo total passado desde que o jogo iniciou.</p>
+      <h2 id="usando-tempo-delta-em-sistemas" tabindex="-1"><a class="header-anchor" href="#usando-tempo-delta-em-sistemas">Usando tempo delta em sistemas</a></h2>
+      <p>Bora usar como exemplo um sistema de movimento que move o componente <code>Position</code> de entidades com velocidade constante, representada pelo componente <code>LinearVelocity</code>:</p>
+      <pre><code class="language-sql">UPDATE Position
+SET
+  x = Position.x + LinearVelocity.x,
+  y = Position.y + LinearVelocity.y,
+  z = Position.z + LinearVelocity.z
+FROM LinearVelocity
+WHERE Position.entity_id = LinearVelocity.entity_id
+</code></pre>
+      <p>Para fazer essa consulta usar o tempo delta e mover a entidade com velocidade constante independente do <em>frame rate</em>, basta fazermos <code>JOIN</code> com a tabela <code>time</code> e multiplicar os valores de velocidade por <code>time.delta</code>:</p>
+      <pre><code class="language-sql">UPDATE Position
+SET
+  x = Position.x + LinearVelocity.x * time.delta,
+  y = Position.y + LinearVelocity.y * time.delta,
+  z = Position.z + LinearVelocity.z * time.delta
+FROM LinearVelocity JOIN time
+WHERE Position.entity_id = LinearVelocity.entity_id
+</code></pre>
+      <h2 id="usando-uptime-em-sistemas" tabindex="-1"><a class="header-anchor" href="#usando-uptime-em-sistemas">Usando <em>uptime</em> em sistemas</a></h2>
+      <p>Saber qual o tempo total que se passou no jogo é útil para criarmos comportamentos baseados em tempo.</p>
+      <p>Por exemplo, vamos fazer um sistema que apaga uma entidade após um certo tempo, especificado pelo componente <code>DeleteAfter</code>:</p>
+      <pre><code class="language-sql">-- CREATE TABLE DeleteAfter(
+--   entity_id INTEGER PRIMARY KEY REFERENCES ...,
+--   seconds,  -- Tempo em segundos para apagar a entidade
+--   inserted_uptime  -- uptime de quando esse componente foi inserido no mundo
+-- );
+
+WITH entities_to_delete AS (
+  SELECT entity_id
+  FROM DeleteAfter JOIN time
+  WHERE time.uptime - DeleteAfter.inserted_uptime &gt;= DeleteAfter.seconds
+)
+DELETE FROM entity
+WHERE id IN entities_to_delete;
+</code></pre>
+      <h2 id="conte%C3%BAdo-b%C3%B4nus%3A-for%C3%A7ando-a-tabela-a-ser-singleton" tabindex="-1"><a class="header-anchor" href="#conte%C3%BAdo-b%C3%B4nus%3A-for%C3%A7ando-a-tabela-a-ser-singleton">Conteúdo bônus: forçando a tabela a ser <em>singleton</em></a></h2>
+      <p>Tá, isso não tem a ver com <em>loop</em> de jogo nem tempo delta.
+        Vou mostrar pra vocês como podemos forçar que ninguém consiga inserir ou apagar linhas na tabela <em>singleton</em> <code>time</code>.</p>
+      <blockquote>
+        <p>Nota: não usei essa técnica no ECSQL, só estou mostrando isso por diversão</p>
+      </blockquote>
+      <p>O melhor jeito para fazer isso é usando <a href="https://www.sqlite.org/lang_createtrigger.html"><em>triggers</em></a>, que são operações a serem executadas na base de dados quando uma linha é inserida, atualizada ou apagada de uma tabela.
+        Uma das coisas que conseguimos fazer com <em>triggers</em> é abortar a consulta que engatilhou o <em>trigger</em>:</p>
+      <pre><code class="language-sql">CREATE TRIGGER abort_insert_time_singleton
+BEFORE INSERT ON time
+BEGIN
+  SELECT RAISE(ABORT, 'É proibido inserir linhas na tabela time');
+END;
+
+CREATE TRIGGER abort_delete_time_singleton
+BEFORE DELETE ON time
+BEGIN
+  SELECT RAISE(ABORT, 'É proibido apagar linhas da tabela time');
+END;
+</code></pre>
+      <p>Agora tentar inserir ou apagar linhas da tabela <code>time</code> falhará com as mensagens que especificamos:</p>
+      <pre><code class="language-sql">INSERT INTO time DEFAULT VALUES;
+-- Erro: 'É proibido inserir linhas na tabela time'
+
+DELETE FROM time;
+-- Erro: 'É proibido apagar linhas da tabela time'
+</code></pre>
+      <h2 id="conclus%C3%A3o" tabindex="-1"><a class="header-anchor" href="#conclus%C3%A3o">Conclusão</a></h2>
+      <p>O tempo está sempre passando e precisamos acompanhá-lo no nosso motor de jogos.</p>
+      <p>Até nosso próximo encontro!</p>
+
+
+      <br />
+      <hr class="thin" />
+      <p>
+        Curte esse conteúdo? Patrocine meu trabalho usando o botão abaixo!
+      </p>
+      <iframe src="https://github.com/sponsors/gilzoide/button" title="Sponsor gilzoide" height="32" width="114" style="border: 0; border-radius: 6px;"></iframe>
+
+    </div>
+  </div>
+
+  <div class="flex-stretch"></div>
+
+  <footer class="main-footer justify-center"><a href="https://github.com/gilzoide/">
+      <img src="/images/github.png" alt="GitHub" />
+    </a><a href="https://www.linkedin.com/in/gilzoide/">
+      <img src="/images/linkedin.png" alt="LinkedIn" />
+    </a>
+    <div class="flex-break"></div>
+    <p class="main-footer-copyright">Copyright ⓒ 2025 Gil Barbosa Reis</p>
+  </footer>
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.9.0/highlightjs-line-numbers.min.js"></script>
+  <script src="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/languages/sql.min.js"></script>
+  <script>
+    hljs.addPlugin(new CopyButtonPlugin());
+    hljs.highlightAll()
+    hljs.initLineNumbersOnLoad()
+  </script>
+  <script src="/js/dropdown.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-witdh, initial-scale=1" />
+  <title>
+    ECSQL: Tracking time -
+    gilzoide
+  </title>
+  <link rel="icon" href="/images/about-picture.jpg" type="image/jpeg" />
+  <link rel="alternate" hreflang="en" href="/en/2025-02-04-ecsql-tracking-time/" />
+
+  <link rel="alternate" hreflang="pt" href="/pt/2025-02-04-ecsql-tracking-time/" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/cards.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/styles/github-dark-dimmed.min.css" integrity="sha512-zcatBMvxa7rT7dDklfjauWsfiSFParF+hRfCdf4Zr40/MmA1gkFcBRbop0zMpvYF3FmznYFgcL8wlcuO/GwHoA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.css" />
+  <link rel="stylesheet" href="/css/code_highlight.css" />
+</head>
+
+<body>
+  <nav class="main-nav">
+    <ul>
+      <li><a class="nav-text" href="/en/">Blog</a></li>
+      <li><a class="nav-text" href="/en/about/">About</a></li>
+      <li class="dropdown-button">
+        <button class="nav-icon">
+          <img src="/images/locale-language.png" />
+        </button>
+        <div class="dropdown">
+          <a class="nav-text nav-active" href="" lang="en" hreflang="en">English</a>
+
+          <a class="nav-text" href="/pt/2025-02-04-ecsql-tracking-time/" lang="pt" hreflang="pt">Português</a>
+        </div>
+      </li>
+    </ul>
+  </nav>
+
+  <div class="justify-center">
+    <div class="main-content">
+
+      <h2 class="card-title">
+        ECSQL: Tracking time</h2>
+      <span class="card-meta">2025-02-04&ensp; | &ensp;
+        <div>
+          <a class="decorated-link card-tag">ECS</a>
+          <a class="decorated-link card-tag">SQL</a>
+          <a class="decorated-link card-tag">C++</a>
+          <a class="decorated-link card-tag">GameLoop</a>
+          <a class="decorated-link card-tag">DeltaTime</a>
+        </div>
+      </span>
+
+      <blockquote>
+        <p>Originally published at <a href="https://github.com/gilzoide/ecsql/blob/main/articles/04-tracking-time-en.md">https://github.com/gilzoide/ecsql/blob/main/articles/04-tracking-time-en.md</a></p>
+      </blockquote>
+
+      <p>One thing you'll see in pretty much any game engine is that they all have a way to get the time elapsed since the last frame, the so called &quot;delta time&quot;.
+        This is used to convert between frames and real world time, making games run in the same speed independently of how many frames are processed per second.</p>
+      <p>For example, if a sprite moves 10 pixels each frame, it will move at the speed of 600 pixels per second if the game is running at 60 frames per second (FPS), but only 300 pixels/s if runing at 30 FPS.
+        The game may run at 60 FPS on a high-end device, but only at 30 FPS on a lower-end device, and we need to make the game experience the same in both cases.
+        To ensure a consistent gameplay experience, we should move the sprite in a rate of pixels per second instead of pixels per frame, that's where delta time come in handy.</p>
+      <h2 id="storing-time-in-sql" tabindex="-1"><a class="header-anchor" href="#storing-time-in-sql">Storing time in SQL</a></h2>
+      <p>We'll store the current frame's delta time and total uptime in SQL to make this information usable by systems.</p>
+      <p>We'll create the singleton <code>time</code> table.
+        &quot;Singleton&quot; here means that this table will only ever have a single row.
+        Its definition is the following:</p>
+      <pre><code class="language-sql">CREATE TABLE time(
+  delta,
+  uptime
+);
+
+-- Here's the singleton row
+-- No time has passed yet, so zero both values
+INSERT INTO time(delta, uptime) VALUES(0, 0);
+</code></pre>
+      <p>Now in the game loop, we fetch the current delta time using raylib's <code>GetFrameTime()</code> and pass it to the following UPDATE query:</p>
+      <pre><code class="language-sql">UPDATE time
+SET delta = ?1, uptime = uptime + ?1;
+</code></pre>
+      <p>Notice that we are using <code>?1</code> for updating both <code>delta</code> and <code>uptime</code>, meaning this variable will receive the same value.
+        This makes <code>uptime</code> be always incremented by <code>delta</code> each frame, so it will always contain the sum of <code>delta</code> times of all frames, resulting in the total time that the game has been running.</p>
+      <h2 id="using-delta-time-in-systems" tabindex="-1"><a class="header-anchor" href="#using-delta-time-in-systems">Using delta time in systems</a></h2>
+      <p>Ok, let's get for example a movement system that moves an entity's <code>Position</code> with constant speed, represented by <code>LinearVelocity</code>:</p>
+      <pre><code class="language-sql">UPDATE Position
+SET
+  x = Position.x + LinearVelocity.x,
+  y = Position.y + LinearVelocity.y,
+  z = Position.z + LinearVelocity.z
+FROM LinearVelocity
+WHERE Position.entity_id = LinearVelocity.entity_id
+</code></pre>
+      <p>To make this query use the delta time to move the entity with the same speed independent of frame rate, all we need to do is join the <code>time</code> table and multiply the <code>LinearVelocity</code> values by <code>time.delta</code>:</p>
+      <pre><code class="language-sql">UPDATE Position
+SET
+  x = Position.x + LinearVelocity.x * time.delta,
+  y = Position.y + LinearVelocity.y * time.delta,
+  z = Position.z + LinearVelocity.z * time.delta
+FROM LinearVelocity JOIN time
+WHERE Position.entity_id = LinearVelocity.entity_id
+</code></pre>
+      <h2 id="using-uptime-in-systems" tabindex="-1"><a class="header-anchor" href="#using-uptime-in-systems">Using uptime in systems</a></h2>
+      <p>Having the total uptime is useful when we want time-based behaviors.</p>
+      <p>For example, let's make a system that deletes an entity after some time, specified by the component <code>DeleteAfter</code>:</p>
+      <pre><code class="language-sql">-- CREATE TABLE DeleteAfter(
+--   entity_id INTEGER PRIMARY KEY REFERENCES ...,
+--   seconds,
+--   inserted_uptime
+-- );
+
+WITH entities_to_delete AS (
+  SELECT entity_id
+  FROM DeleteAfter JOIN time
+  WHERE time.uptime - DeleteAfter.inserted_uptime &gt;= DeleteAfter.seconds
+)
+DELETE FROM entity
+WHERE id IN entities_to_delete;
+</code></pre>
+      <h2 id="bonus-content%3A-enforcing-singleton-table" tabindex="-1"><a class="header-anchor" href="#bonus-content%3A-enforcing-singleton-table">Bonus content: enforcing singleton table</a></h2>
+      <p>Ok, so this is not really related to game loop and delta time.
+        I'm going to show you how to enforce that no one ever inserts a new row into the singleton <code>time</code> table.</p>
+      <blockquote>
+        <p>Note: I didn't do this in ECSQL, I'm showing you this just for fun.</p>
+      </blockquote>
+      <p>The best way to do this is using <a href="https://www.sqlite.org/lang_createtrigger.html">triggers</a>, which are database operations that run when a row is either inserted, updated or deleted from a table.
+        One of the things we can do with triggers is abort the query that triggered the trigger-program:</p>
+      <pre><code class="language-sql">CREATE TRIGGER abort_insert_time_singleton
+BEFORE INSERT ON time
+BEGIN
+  SELECT RAISE(ABORT, 'Inserting rows in time table is forbidden');
+END;
+
+CREATE TRIGGER abort_delete_time_singleton
+BEFORE DELETE ON time
+BEGIN
+  SELECT RAISE(ABORT, 'Deleting rows in time table is forbidden');
+END;
+</code></pre>
+      <p>Now trying to insert into or delete from the <code>time</code> table will fail with the message we supplied:</p>
+      <pre><code class="language-sql">INSERT INTO time DEFAULT VALUES;
+-- Error: 'Inserting rows in time table is forbidden'
+
+DELETE FROM time;
+-- Error: 'Deleting rows in time table is forbidden'
+</code></pre>
+      <h2 id="conclusion" tabindex="-1"><a class="header-anchor" href="#conclusion">Conclusion</a></h2>
+      <p>Time is always running, and we need to keep track of it in our game engine.</p>
+      <p>See you next time!</p>
+
+
+      <br />
+      <hr class="thin" />
+      <p>
+        Like this content? Sponsor my work using the button below!
+      </p>
+      <iframe src="https://github.com/sponsors/gilzoide/button" title="Sponsor gilzoide" height="32" width="114" style="border: 0; border-radius: 6px;"></iframe>
+
+    </div>
+  </div>
+
+  <div class="flex-stretch"></div>
+
+  <footer class="main-footer justify-center"><a href="https://github.com/gilzoide/">
+      <img src="/images/github.png" alt="GitHub" />
+    </a><a href="https://www.linkedin.com/in/gilzoide/">
+      <img src="/images/linkedin.png" alt="LinkedIn" />
+    </a>
+    <div class="flex-break"></div>
+    <p class="main-footer-copyright">Copyright ⓒ 2025 Gil Barbosa Reis</p>
+  </footer>
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.9.0/highlightjs-line-numbers.min.js"></script>
+  <script src="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/languages/sql.min.js"></script>
+  <script>
+    hljs.addPlugin(new CopyButtonPlugin());
+    hljs.highlightAll()
+    hljs.initLineNumbersOnLoad()
+  </script>
+  <script src="/js/dropdown.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="pt" dir="ltr">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-witdh, initial-scale=1" />
+  <title>
+    Design de Dispatch Queue -
+    gilzoide
+  </title>
+  <link rel="icon" href="/images/about-picture.jpg" type="image/jpeg" />
+  <link rel="alternate" hreflang="en" href="/en/2026-09-12-designing-dispatch-queue/" />
+
+  <link rel="alternate" hreflang="pt" href="/pt/2026-09-12-designing-dispatch-queue/" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/cards.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/styles/github-dark-dimmed.min.css" integrity="sha512-zcatBMvxa7rT7dDklfjauWsfiSFParF+hRfCdf4Zr40/MmA1gkFcBRbop0zMpvYF3FmznYFgcL8wlcuO/GwHoA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.css" />
+  <link rel="stylesheet" href="/css/code_highlight.css" />
+</head>
+
+<body>
+  <nav class="main-nav">
+    <ul>
+      <li><a class="nav-text" href="/pt/">Blog</a></li>
+      <li><a class="nav-text" href="/pt/about/">Sobre</a></li>
+      <li class="dropdown-button">
+        <button class="nav-icon">
+          <img src="/images/locale-language.png" />
+        </button>
+        <div class="dropdown">
+          <a class="nav-text" href="/en/2026-09-12-designing-dispatch-queue/" lang="en" hreflang="en">English</a>
+
+          <a class="nav-text nav-active" href="" lang="pt" hreflang="pt">Português</a>
+        </div>
+      </li>
+    </ul>
+  </nav>
+
+  <div class="justify-center">
+    <div class="main-content">
+
+      <h2 class="card-title">
+        Design de Dispatch Queue</h2>
+      <span class="card-meta">2026-09-12&ensp; | &ensp;
+        <div>
+          <a class="decorated-link card-tag">C++</a>
+          <a class="decorated-link card-tag">Multithreading</a>
+          <a class="decorated-link card-tag">ThreadPool</a>
+        </div>
+      </span>
+
+      <blockquote>
+        <p>Originalmente publicado em <a href="https://github.com/gilzoide/cpp-dispatch-queue/blob/main/articles/01-designing-pt.md">https://github.com/gilzoide/cpp-dispatch-queue/blob/main/articles/01-designing-pt.md</a></p>
+      </blockquote>
+
+      <h2 id="contexto" tabindex="-1"><a class="header-anchor" href="#contexto">Contexto</a></h2>
+      <p>Eu trabalho com jogos já faz um tempo e nos últimos 2 anos pude trabalhar com alguns jogos nativos que usam motores feitos em C++.
+        Todos têm algum tipo de implementação de <em>thread pool</em> / despachador de tarefas, apesar de alguns projetos usarem <em>multithreading</em> mais (e de maneira melhor) do que outros.
+        <em>Multithreading</em> é um rolê bem complexo, mas pode ser mais simples com boas abstrações.
+      </p>
+      <p>Também uso Unity há bastante tempo e gosto muito do <a href="https://learn.microsoft.com/pt-br/dotnet/csharp/asynchronous-programming/task-asynchronous-programming-model">async/await</a> e da <a href="https://learn.microsoft.com/pt-br/dotnet/standard/parallel-programming/task-parallel-library-tpl">Task Parallel Library</a> do C#.
+        O <a href="https://docs.unity3d.com/Manual/job-system-overview.html">Job System da Unity</a> também é maneiro, apesar de ser mais difícil de usar principalmente por exigir tipos não gerenciados (<em>unmanaged</em>).</p>
+      <p>Então a ideia desse projeto aqui é tentar implementar um despachador de tarefas <em>multithreaded</em> robusto com uma API bem bacana que:</p>
+      <ol>
+        <li>Dependa somente da STL do C++, usando primitivas de <em>threading</em> do C++11 e evitando código dependente de plataforma o máximo possível</li>
+        <li>Suporte funcionalidades maneiras do C++ como <a href="https://en.cppreference.com/cpp/language/lambda">lambdas</a> e <a href="https://en.cppreference.com/cpp/language/coroutines">corrotinas</a> (C++20).</li>
+        <li>Permitir um estilo de código assíncrono que uso na Unity / C# e gosto muito, por exemplo com funcionalidade similar ao que <a href="https://learn.microsoft.com/pt-br/dotnet/api/system.threading.tasks.task.whenall"><code>Task.WhenAll</code></a> e <a href="https://learn.microsoft.com/pt-br/dotnet/api/system.threading.tasks.taskcompletionsource"><code>TaskCompletionSource</code></a> provêm.</li>
+        <li>Ser agnóstico de <em>engine</em>: não importa se estiver usando Cocos2d, Raylib, SDL ou qualquer outra coisa, Dispatch Queue ainda é útil.</li>
+        <li>Ser compatível com <a href="https://emscripten.org/">Emscripten</a> e builds pra web.</li>
+      </ol>
+      <p>Durante o desenvolvimento eu acabei adicionando mais algumas escolhas de <em>design</em> que vou comentar abaixo.</p>
+      <h2 id="subclasse-por-tarefa" tabindex="-1"><a class="header-anchor" href="#subclasse-por-tarefa">Subclasse por tarefa</a></h2>
+      <p>Uma implementação que encontrei em um projeto exige que você crie uma subclasse para cada tarefa que quiser executar.
+        O Job System da Unity e outras implementações que encontrei online também fazem isso.</p>
+      <p>Mas eu sinto que o &quot;jeito C++&quot; seria usando <a href="https://en.cppreference.com/cpp/utility/functional">functors</a> e/ou <a href="https://en.cppreference.com/cpp/utility/functional/function"><code>std::function</code></a>.
+        Exigir que usuários criem subclasses somente para ter um método <code>void Execute()</code> parece demais pra mim, eu queria uma API o mais simples possível, mas ainda sim efetiva.
+        Suportar <em>lambdas</em> é muito sucesso em termos de usabilidade na minha opinião.</p>
+      <p>Saca só <a href="https://en.cppreference.com/cpp/thread/async"><code>std::async</code></a> do C++ por exemplo, você passa um <em>functor</em> e seus argumentos opcionais, ele torna um <a href="https://en.cppreference.com/cpp/thread/future"><code>std::future</code></a> que pode ser usado para acessar o resultado depois.
+        Simples, poderoso, maravilhoso!</p>
+      <p>Aqui como se dispacha uma tarefa usando Dispatch Queue:</p>
+      <pre><code class="language-cpp">task_dispatcher dispatcher;
+
+dispatcher.dispatch([]() {
+    std::cout &lt;&lt; &quot;Olá mundo!&quot; &lt;&lt; std::endl;
+});
+</code></pre>
+      <h2 id="future" tabindex="-1"><a class="header-anchor" href="#future">Future</a></h2>
+      <p>Só que algumas coisa me incomodam bastante em <code>std::future</code>:</p>
+      <ol>
+        <li>O único jeito de descobrir se o valor do <em>future</em> está prontamente disponível é usando <a href="https://en.cppreference.com/cpp/thread/future/wait_for"><code>wait_for</code></a> com um <em>timeout</em> zero.
+          Algo como um método <code>future.is_ready()</code> seria bem melhor em termos de API na minha opinião.</li>
+        <li>O único jeito de descobrir se a tarefa falhou, se rolou alguma exceção, é chamando <a href="https://en.cppreference.com/cpp/thread/future/get"><code>get</code></a> dentro de um bloco try/catch, não há nada tipo <code>future.is_failed()</code> ou <code>future.get_exception()</code>.</li>
+        <li>Falta um jeito bom de executar código logo após o <em>future</em> ser concluído, assincronamente, algo parecido com <a href="https://learn.microsoft.com/pt-br/dotnet/api/system.threading.tasks.task.continuewith"><code>Task.ContinueWith</code></a> do C#.</li>
+      </ol>
+      <p>Comecei a implementação usando <code>std::future</code> e <code>std::packaged_task</code>, mas acabei implementando meu próprio <a href="https://github.com/gilzoide/cpp-dispatch-queue/blob/main/include/dispatch_queue/detail/task_future.hpp"><code>task_future&lt;T&gt;</code></a> que resolve os problemas acima.</p>
+      <pre><code class="language-cpp">task&lt;void&gt; t1 = dispatcher.dispatch([]() {
+    std::cout &lt;&lt; &quot;Olá mundo!&quot; &lt;&lt; std::endl;
+});
+
+// Avalie o estado usando `task.get_state()`
+if (t1.get_state() == task_state::pending) {
+    std::cout &lt;&lt; &quot;Não acabou ainda&quot; &lt;&lt; std::endl;
+}
+
+// Adicione uma continuação usando `task.then()`
+t1.then([](const task&lt;void&gt;&amp; t) {
+    if (t.get_state() == task_state::ready) {
+        std::cout &lt;&lt; &quot;Foi sucesso =D&quot; &lt;&lt; std::endl;
+    }
+    else {  // task_state::failed
+        std::cout &lt;&lt; &quot;Falhou =(&quot; &lt;&lt; std::endl;
+    }
+})
+</code></pre>
+      <h2 id="promise" tabindex="-1"><a class="header-anchor" href="#promise">Promise</a></h2>
+      <p>Mencionei o <code>TaskCompletionSource</code> do C# acima, xo explicar melhor: é um meio de usuários completarem tarefas &quot;manualmente&quot;.
+        É muito útil para converter métodos que recebem <em>callbacks</em> em código pronto pra ser usado com async/await.</p>
+      <p>Em Dispatch Queue, decidi adicionar essa funcionalidade na classe <code>task&lt;T&gt;</code> mesmo ao invés de criar uma classe <code>task_source&lt;T&gt;</code> separada, mais por simplicidade mesmo.</p>
+      <pre><code class="language-cpp">// Usando tasks como promise
+task&lt;int&gt; promise = task&lt;int&gt;::create_pending();
+do_something_async_with_callback([=](int result) {
+    promise.set_value(result);
+});
+
+int result = promise.get();
+</code></pre>
+      <h2 id="tasks-agregadas" tabindex="-1"><a class="header-anchor" href="#tasks-agregadas">Tasks agregadas</a></h2>
+      <p>É muito útil poder esperar várias tarefas completarem de uma vez só.
+        Pra isso <code>when_all</code> existe:</p>
+      <pre><code class="language-cpp">// Inicializa vários sistemas do jogo concorrentemente
+when_all(
+    dispatcher.dispatch(initialize_graphics),
+    dispatcher.dispatch(initialize_audio),
+    dispatcher.dispatch(initialize_input),
+    dispatcher.dispatch(initialize_analytics_service),
+    dispatcher.dispatch(load_saved_game)
+).then([](const task&lt;void&gt;&amp; t) {
+    // Quando tudo termina, começa o jogo
+    start_game();
+})
+</code></pre>
+      <h2 id="sincronizando-com-o-main-loop" tabindex="-1"><a class="header-anchor" href="#sincronizando-com-o-main-loop">Sincronizando com o <em>main loop</em></a></h2>
+      <p>Outro padrão muito comum em aplicações interativas / jogos é despachar uma tarefa para o <em>background</em> e, após finalizada, usar o resultado da tarefa na <em>main thread</em>.</p>
+      <p>Em Unity, assim como Cocos2d e outros motores, algumas APIs não são <em>thread-safe</em> e só podem ser usados na <em>main thread</em>, como por exemplo atualizar gráficos e adicionar objetos na árvore da cena.</p>
+      <p>Ler e escrever arquivos de <em>save</em>, esperar requisições HTTP e <em>parsear</em> arquivos grandes de configuração JSON ou XML são exemplos de tarefas potencialmente longas que você vai querer rodar em <em>background</em> para evitar travar os quadros do jogo.</p>
+      <p>Decisão de <em>design</em> adicional:</p>
+      <ul>
+        <li>Poder despachar tarefas na <em>main thread</em> da aplicação</li>
+      </ul>
+      <pre><code class="language-cpp">dispatcher.dispatch_main([]() {
+    std::cout &lt;&lt; &quot;No main loop&quot; &lt;&lt; std::endl;
+});
+
+void app_main_loop() {
+    // Chame no main loop do seu app...
+    dispatcher.main_loop();
+}
+</code></pre>
+      <h2 id="executando-tarefas-ap%C3%B3s-um-delay" tabindex="-1"><a class="header-anchor" href="#executando-tarefas-ap%C3%B3s-um-delay">Executando tarefas após um <em>delay</em></a></h2>
+      <p>Outro padrão super comum é executar tarefas após um tempo determinado.
+        Vi isso em algumas implementações e pensei &quot;Por que não?&quot;, mesmo que ainda não tenha usado pessoalmente em nenhum projeto 😅</p>
+      <p>Decisão de <em>design</em> opcional adicional:</p>
+      <ul>
+        <li>Poder despachar tarefas na <em>main thread</em> da aplicação com um <em>delay</em></li>
+      </ul>
+      <pre><code class="language-cpp">float delay_secs = 1;
+dispatcher.dispatch_main_after(delay_secs, []() {
+    std::cout &lt;&lt; &quot;No main loop após 1s&quot; &lt;&lt; std::endl;
+});
+
+void app_main_loop(float dt) {
+    // Chame no main loop do seu app...
+    // Precisa do delta tempo para avançar o timer interno
+    dispatcher.main_loop(dt);
+}
+</code></pre>
+      <h2 id="task-pinning" tabindex="-1"><a class="header-anchor" href="#task-pinning"><em>Task pinning</em></a></h2>
+      <p>Esse não é muito comum, mas é bem interessante.
+        Outro padrão que existe é permitir que algumas tarefas sejam pinadas em <em>threads</em> específicas.
+        Isso é útil para serializar tarefas, como por exemplo salvar arquivos de um jeito que eles nunca são acessados concorrentemente, evitando corrompê-los.
+        Também é útil caso a tarefa necessite que variáveis <em>thread-local</em> sejam preservadas entre execuções.</p>
+      <p>Executar algumas tarefas sempre na mesma <em>thread</em> é facil de fazer usando despachadores de tarefa com 1 <em>thread</em> só.</p>
+      <p>Sendo assim, escolhi uma opção um pouco diferente: ao invés de pinar tarefas em <em>threads</em> específicas, fiz um jeito de garantir que tarefas usando a mesma tag (um número inteiro) nunca sejam executadas em paralelo.
+        Isso permite que tarefas com tags rodem em quaisquer das <em>threads</em> do <em>pool</em>.
+        Usuários que precisarem de tarefas sendo executadas em <em>threads</em> específicas podem simplsmente criar despachadores seriais separados.</p>
+      <pre><code class="language-cpp">enum TaskTags {
+    SAVE_FILE_IO,
+};
+
+// As três tarefas a seguir executarão uma só de cada vez,
+// mesmo que o despachador tiver mais threads esperando novas tarefas
+dispatcher.dispatch_tagged(SAVE_FILE_IO, [](){ /* ... */ });
+dispatcher.dispatch_tagged(SAVE_FILE_IO, [](){ /* ... */ });
+dispatcher.dispatch_tagged(SAVE_FILE_IO, [](){ /* ... */ });
+</code></pre>
+      <h2 id="corrotinas-(c%2B%2B20)" tabindex="-1"><a class="header-anchor" href="#corrotinas-(c%2B%2B20)">Corrotinas (C++20)</a></h2>
+      <p>C++20 introduz corrotinas, que são um mecanismo bem dahora para suspender e continuar funções assincronamente, similar a async/await do C# (e do Python e JavaScript).</p>
+      <p>Só que no C++ não há um tempo de execução padrão para essa suspensão e continuação das funções, nós precisamos prover alguma implementação para isso funcionar.</p>
+      <p>Então usei <a href="https://github.com/gilzoide/cpp-dispatch-queue/blob/main/include/dispatch_queue/task_dispatcher.hpp"><code>task_dispatcher</code></a> e <a href="https://github.com/gilzoide/cpp-dispatch-queue/blob/main/include/dispatch_queue/task.hpp"><code>task&lt;T&gt;</code></a> para implementar o tempo de execução de corrotinas, permitindo código tipo o seguinte:</p>
+      <pre><code class="language-cpp">task_dispatcher dispatcher;
+
+// Se sua função retorna task&lt;T&gt; você pode usar `co_await` e `co_return`,
+// efetivamente transformando-a numa corrotina
+task&lt;int&gt; my_coroutine() {
+    // Usar `co_await` suspende a corrotina
+    // Ela será automaticamente continuada usando `task.then()`
+    co_await dispatcher.dispatch([]() { /* ... */ });
+
+    // Tasks com valor também funcionam
+    int value = co_await dispatcher.dispatch([]() { return 42; });
+
+    // Continua a corrotina na main thread
+    co_await dispatcher.dispatch_main();
+    do_something_in_main_thread();
+
+    // Continua a corrotina num thread de background
+    co_await dispatcher.dispatch();
+    do_something_in_background();
+
+    co_return 0;
+}
+
+// A corrotina começa imediatamente, mas suspende no primeiro `co_await`
+task&lt;int&gt; t1 = my_coroutine();
+</code></pre>
+      <h2 id="pr%C3%B3ximos-passos" tabindex="-1"><a class="header-anchor" href="#pr%C3%B3ximos-passos">Próximos passos</a></h2>
+      <p>Uma das poucas funcionalidades faltando que vi em algumas implementações é o suporte a cancelar tarefas despachadas.
+        Poderíamos usar as tags pra isso, de modo que tarefas com tags possam ser canceladas.
+        Adicionar suporte a tags em tarefas de <em>main loop</em> / tarefas com <em>delay</em> também seria útil nesse caso.</p>
+      <p>Além disso, fazer alguns <em>benchmarks</em> comparando com outras implementações (como <a href="https://github.com/dougbinks/enkiTS">enkiTS</a> ou <a href="https://github.com/bshoshany/thread-pool">BS::thread_pool</a>) seria uma adição bacana.</p>
+      <h2 id="conclus%C3%A3o" tabindex="-1"><a class="header-anchor" href="#conclus%C3%A3o">Conclusão</a></h2>
+      <p>Acho que é bem isso aí mesmo, até a próxima!</p>
+
+
+      <br />
+      <hr class="thin" />
+      <p>
+        Curte esse conteúdo? Patrocine meu trabalho usando o botão abaixo!
+      </p>
+      <iframe src="https://github.com/sponsors/gilzoide/button" title="Sponsor gilzoide" height="32" width="114" style="border: 0; border-radius: 6px;"></iframe>
+
+    </div>
+  </div>
+
+  <div class="flex-stretch"></div>
+
+  <footer class="main-footer justify-center"><a href="https://github.com/gilzoide/">
+      <img src="/images/github.png" alt="GitHub" />
+    </a><a href="https://www.linkedin.com/in/gilzoide/">
+      <img src="/images/linkedin.png" alt="LinkedIn" />
+    </a>
+    <div class="flex-break"></div>
+    <p class="main-footer-copyright">Copyright ⓒ 2025 Gil Barbosa Reis</p>
+  </footer>
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.9.0/highlightjs-line-numbers.min.js"></script>
+  <script src="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/languages/cpp.min.js"></script>
+  <script>
+    hljs.addPlugin(new CopyButtonPlugin());
+    hljs.highlightAll()
+    hljs.initLineNumbersOnLoad()
+  </script>
+  <script src="/js/dropdown.js"></script>
+</body>
+
+</html>

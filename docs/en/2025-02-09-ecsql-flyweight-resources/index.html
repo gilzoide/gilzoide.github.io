@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-witdh, initial-scale=1" />
+  <title>
+    ECSQL: External resources and the Flyweight pattern -
+    gilzoide
+  </title>
+  <link rel="icon" href="/images/about-picture.jpg" type="image/jpeg" />
+  <link rel="alternate" hreflang="en" href="/en/2025-02-09-ecsql-flyweight-resources/" />
+
+  <link rel="alternate" hreflang="pt" href="/pt/2025-02-09-ecsql-flyweight-resources/" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/cards.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/styles/github-dark-dimmed.min.css" integrity="sha512-zcatBMvxa7rT7dDklfjauWsfiSFParF+hRfCdf4Zr40/MmA1gkFcBRbop0zMpvYF3FmznYFgcL8wlcuO/GwHoA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.css" />
+  <link rel="stylesheet" href="/css/code_highlight.css" />
+</head>
+
+<body>
+  <nav class="main-nav">
+    <ul>
+      <li><a class="nav-text" href="/en/">Blog</a></li>
+      <li><a class="nav-text" href="/en/about/">About</a></li>
+      <li class="dropdown-button">
+        <button class="nav-icon">
+          <img src="/images/locale-language.png" />
+        </button>
+        <div class="dropdown">
+          <a class="nav-text nav-active" href="" lang="en" hreflang="en">English</a>
+
+          <a class="nav-text" href="/pt/2025-02-09-ecsql-flyweight-resources/" lang="pt" hreflang="pt">Português</a>
+        </div>
+      </li>
+    </ul>
+  </nav>
+
+  <div class="justify-center">
+    <div class="main-content">
+
+      <h2 class="card-title">
+        ECSQL: External resources and the Flyweight pattern</h2>
+      <span class="card-meta">2025-02-09&ensp; | &ensp;
+        <div>
+          <a class="decorated-link card-tag">ECS</a>
+          <a class="decorated-link card-tag">SQLite</a>
+          <a class="decorated-link card-tag">C++</a>
+          <a class="decorated-link card-tag">Flyweight</a>
+        </div>
+      </span>
+
+      <blockquote>
+        <p>Originally published at <a href="https://github.com/gilzoide/ecsql/blob/main/articles/05-flyweight-resources-en.md">https://github.com/gilzoide/ecsql/blob/main/articles/05-flyweight-resources-en.md</a></p>
+      </blockquote>
+
+      <p>One of the problems that quickly arise from using SQLite as a data store for ECS is: how to associate native C++ data with SQL data?</p>
+      <p>Example: to draw textures using raylib we need an instance of the <code>Texture</code> struct.
+        But systems query components using SQL, how to get the <code>Texture</code> instance to be drawn?</p>
+      <p>To solve this problem, we'll need to maintain a map between SQL data and native instances.
+        Each native instance will have an identifier, for example the associated entity's numeric identifier.
+        In the system implementation we join the SQL data with native data using C++ code by querying this map.
+        A C++ <code>std::map</code> or <code>std::unordered_map</code> is enough for implementing this.</p>
+      <h2 id="mapping-sql-to-textures" tabindex="-1"><a class="header-anchor" href="#mapping-sql-to-textures">Mapping SQL to textures</a></h2>
+      <p>Let's take for example a <code>Texture</code> component that contains the asset path to be loaded:</p>
+      <pre><code class="language-cpp">ecsql::Component TextureComponent {
+    &quot;Texture&quot;,
+    {
+        &quot;asset_path TEXT&quot;,
+    }
+};
+</code></pre>
+      <p>We'll create the map that will store native <code>Texture</code> instances for each entity:</p>
+      <pre><code class="language-cpp">std::unordered_map&lt;ecsql::EntityId, Texture&gt; TextureMap;
+</code></pre>
+      <p>In the system's implementation, we query the texture map using the identifier got from the SQL query:</p>
+      <pre><code class="language-cpp">ecsql::System DrawTextureAtOrigin {
+    // System name
+    &quot;DrawTextureAtOrigin&quot;,
+    // SQL statements
+    {
+        &quot;SELECT entity_id FROM Texture&quot;,
+    },
+    // implementation
+    [](ecsql::World&amp; world, std::vector&lt;ecsql::PreparedSQL&gt;&amp; prepared_sqls) {
+        auto select_texture = prepared_sqls[0];
+        for (ecsql::SQLRow row : select_texture()) {
+            auto entity_id = row.get&lt;ecsql::EntityId&gt;();
+            auto it = TextureMap.find(entity_id);
+            if (it != TextureMap.end()) {
+                Texture texture = it-&gt;second();
+                DrawTexture(texture, 0, 0, WHITE);
+            }
+        }
+    },
+};
+</code></pre>
+      <p>All that's left to do is actually load the texture into the map when it's needed and unload it when not needed anymore.
+        We'll use a hook system for this, so that we load the texture automatically when inserting a row in the <code>Texture</code> table and unload it when the row gets deleted:</p>
+      <pre><code class="language-cpp">ecsql::HookSystem TextureMapHook {
+    // Component name
+    &quot;Texture&quot;
+    // implementation
+    [](ecsql::HookType hook, ecsql::SQLBaseRow&amp; old_row, ecsql::SQLBaseRow&amp; new_row) {
+        switch (hook) {
+            case ecsql::HookType::OnInsert: {
+                auto [entity_id, asset_path] = new_row.get&lt;ecsql::EntityId, const char *&gt;();
+                Texture texture = LoadTexture(asset_path);
+                TextureMap.emplace(entity_id, texture);
+                break;
+            }
+
+            case ecsql::HookType::OnDelete: {
+                auto entity_id = old_row.get&lt;ecsql::EntityId&gt;();
+                auto it = TextureMap.find(entity_id);
+                if (it != TextureMap.end()) {
+                    UnloadTexture(it-&gt;second());
+                    TextureMap.erase(it);
+                }
+                break;
+            }
+        }
+    },
+};
+</code></pre>
+      <p>Now our <code>DrawTextureAtOrigin</code> system should be able to draw textures successfully.</p>
+      <h2 id="reusing-duplicated-resources" tabindex="-1"><a class="header-anchor" href="#reusing-duplicated-resources">Reusing duplicated resources</a></h2>
+      <p>One thing that you'll notice is that if we use the same texture asset for several entities, it will be loaded several times and we'll end up with lots of duplicates, one for each entity with a Texture component.
+        Instead of loading the same texture several times, we want to have a single <code>Texture</code> instance for each loaded texture asset and share it between all entities that use the same asset.
+        This idea of sharing data with similar objects to reduce memory usage is the core of the <a href="https://en.wikipedia.org/wiki/Flyweight_pattern">Flyweight</a> design pattern.</p>
+      <p>Now, instead of mapping entity IDs to <code>Texture</code> instances, we'll map them based on the asset path.
+        If 100 entities use a texture asset with the same path, all of them will share a single native instance.
+        This not only makes memory usage lower, but helps with reducing GPU usage by helping draw batching (which I'm not going to cover in this article).</p>
+      <p>To make sure that we unload the texture when it is not needed anymore by any entity, we'll keep a reference count for each texture.
+        When there's currently 0 entities referencing a texture and we insert a new row, we'll load the texture and mark the reference count as 1.
+        As more rows are inserted, we keep incrementing the count without loading the texture again.
+        As rows are deleted, we decrement the count.
+        Whenever we delete the last row, when the count is going from 1 to 0, this is when we finally unload the texture.</p>
+      <p>I'll be using my own <a href="https://github.com/gilzoide/flyweight.hpp">flyweight.hpp</a> package for the Flyweight implementation, since it has support for automatic reference counting.
+        So, instead of a <code>std::unordered_map</code> of entity ID to Texture, we now have a reference-counted Flyweight that maps asset paths (<code>std::string</code>) to Texture:</p>
+      <pre><code class="language-cpp">flyweight::flyweight_refcounted&lt;std::string, Texture&gt; TextureFlyweight {
+    // Object loader, called when reference count goes from 0 to 1
+    [](const std::string&amp; asset_path) {
+      return LoadTexture(asset_path.c_str());
+    },
+    // Object unloader, called when reference count goes from 1 to 0
+    [](Texture&amp; texture) {
+        UnloadTexture(texture);
+    }
+}
+</code></pre>
+      <p>The hook system now looks like this:</p>
+      <pre><code class="language-cpp">ecsql::HookSystem TextureMapHook {
+    // Component name
+    &quot;Texture&quot;
+    // implementation
+    [](ecsql::HookType hook, ecsql::SQLBaseRow&amp; old_row, ecsql::SQLBaseRow&amp; new_row) {
+        switch (hook) {
+            case ecsql::HookType::OnInsert: {
+                auto asset_path = new_row.get&lt;std::string&gt;(1);
+                // `get` increments the reference count
+                // The texture will only get loaded when going from 0 to 1
+                TextureFlyweight.get(asset_path);
+                break;
+            }
+
+            case ecsql::HookType::OnDelete: {
+                auto asset_path = old_row.get&lt;std::string&gt;(1);
+                // `release` decrements the reference count
+                // The texture will only get unloaded when going from 1 to 0
+                TextureFlyweight.release(asset_path);
+                break;
+            }
+        }
+    },
+};
+</code></pre>
+      <p>And the <code>DrawTextureAtOrigin</code> system now goes like this:</p>
+      <pre><code class="language-cpp">ecsql::System DrawTextureAtOrigin {
+    // System name
+    &quot;DrawTextureAtOrigin&quot;,
+    // SQL statements
+    {
+        &quot;SELECT asset_path FROM Texture&quot;,
+    },
+    // implementation
+    [](ecsql::World&amp; world, std::vector&lt;ecsql::PreparedSQL&gt;&amp; prepared_sqls) {
+        auto select_texture = prepared_sqls[0];
+        for (ecsql::SQLRow row : select_texture()) {
+            auto asset_path = row.get&lt;std::string&gt;();
+            // `peek` returns a pointer to the texture, if it is loaded
+            // Since we have the hook system, it will always be loaded!
+            Texture *texture = TextureFlyweight.peek(asset_path);
+            DrawTexture(*texture, 0, 0, WHITE);
+        }
+    },
+};
+</code></pre>
+      <h2 id="conclusion" tabindex="-1"><a class="header-anchor" href="#conclusion">Conclusion</a></h2>
+      <p>Not everything necessary for running the game can be stored in the database, but that's ok.
+        We can always bridge the SQL data with native C++ data using associative maps.</p>
+      <p>We've also seen how to avoid duplicating native resources by using the Flyweight design pattern, which is a really common feat in game engines.</p>
+      <p>That's about it, hope you liked it!</p>
+      <p>Cheers \o/</p>
+
+
+      <br />
+      <hr class="thin" />
+      <p>
+        Like this content? Sponsor my work using the button below!
+      </p>
+      <iframe src="https://github.com/sponsors/gilzoide/button" title="Sponsor gilzoide" height="32" width="114" style="border: 0; border-radius: 6px;"></iframe>
+
+    </div>
+  </div>
+
+  <div class="flex-stretch"></div>
+
+  <footer class="main-footer justify-center"><a href="https://github.com/gilzoide/">
+      <img src="/images/github.png" alt="GitHub" />
+    </a><a href="https://www.linkedin.com/in/gilzoide/">
+      <img src="/images/linkedin.png" alt="LinkedIn" />
+    </a>
+    <div class="flex-break"></div>
+    <p class="main-footer-copyright">Copyright ⓒ 2025 Gil Barbosa Reis</p>
+  </footer>
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.9.0/highlightjs-line-numbers.min.js"></script>
+  <script src="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/languages/cpp.min.js"></script>
+  <script>
+    hljs.addPlugin(new CopyButtonPlugin());
+    hljs.highlightAll()
+    hljs.initLineNumbersOnLoad()
+  </script>
+  <script src="/js/dropdown.js"></script>
+</body>
+
+</html>

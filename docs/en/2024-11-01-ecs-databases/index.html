@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-witdh, initial-scale=1" />
+  <title>
+    ECS meets SQL: the world as a relational database -
+    gilzoide
+  </title>
+  <link rel="icon" href="/images/about-picture.jpg" type="image/jpeg" />
+  <link rel="alternate" hreflang="en" href="/en/2024-11-01-ecs-databases/" />
+
+  <link rel="alternate" hreflang="pt" href="/pt/2024-11-01-ecs-databases/" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/cards.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/styles/github-dark-dimmed.min.css" integrity="sha512-zcatBMvxa7rT7dDklfjauWsfiSFParF+hRfCdf4Zr40/MmA1gkFcBRbop0zMpvYF3FmznYFgcL8wlcuO/GwHoA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.css" />
+  <link rel="stylesheet" href="/css/code_highlight.css" />
+</head>
+
+<body>
+  <nav class="main-nav">
+    <ul>
+      <li><a class="nav-text" href="/en/">Blog</a></li>
+      <li><a class="nav-text" href="/en/about/">About</a></li>
+      <li class="dropdown-button">
+        <button class="nav-icon">
+          <img src="/images/locale-language.png" />
+        </button>
+        <div class="dropdown">
+          <a class="nav-text nav-active" href="" lang="en" hreflang="en">English</a>
+
+          <a class="nav-text" href="/pt/2024-11-01-ecs-databases/" lang="pt" hreflang="pt">Português</a>
+        </div>
+      </li>
+    </ul>
+  </nav>
+
+  <div class="justify-center">
+    <div class="main-content">
+
+      <h2 class="card-title">
+        ECS meets SQL: the world as a relational database</h2>
+      <span class="card-meta">2024-11-01&ensp; | &ensp;
+        <div>
+          <a class="decorated-link card-tag">ECS</a>
+          <a class="decorated-link card-tag">SQL</a>
+        </div>
+      </span>
+
+      <blockquote>
+        <p>Originally published at <a href="https://github.com/gilzoide/ecsql/blob/main/articles/01-ecs-databases-en.md">https://github.com/gilzoide/ecsql/blob/main/articles/01-ecs-databases-en.md</a></p>
+      </blockquote>
+
+      <blockquote>
+        <p>Note: this document assumes you have basic knowledge of SQL</p>
+      </blockquote>
+      <h2 id="primer-on-ecs" tabindex="-1"><a class="header-anchor" href="#primer-on-ecs">Primer on ECS</a></h2>
+      <p>Entity Component System, or ECS for short, is a design pattern that provides code reusability by separating data from behaviour logic, often used by video games.
+        ECS models are composed of:</p>
+      <ul>
+        <li>Entities: objects living in the world, represented by unique identifiers.</li>
+        <li>Components: data types that can be attached to entities.
+          An entity can have zero or more components, which can be added and removed from them dynamically.
+          For example a &quot;Position&quot; component used by objects in a 3D space could have 3 float properties named &quot;x&quot;, &quot;y&quot; and &quot;z&quot;.</li>
+        <li>Systems: functions that implement behavior logic, applied selectively to entities that have a specific set of components.
+          For example, a &quot;Move&quot; system that moves entites in a 3D space could be applied selectively to entities that have both a &quot;Position&quot; and &quot;Velocity&quot; components.</li>
+        <li>World: the container for all ECS data, such as living entities and components.</li>
+      </ul>
+      <p>For more detailed explanation of ECS concepts, check out this <a href="https://www.flecs.dev/ecs-faq/">ECS FAQ</a>.</p>
+      <h2 id="ecs-and-databases" tabindex="-1"><a class="header-anchor" href="#ecs-and-databases">ECS and databases</a></h2>
+      <p>An ECS world can be viewed as a database, which stores all living entities and their components data.
+        The world is queried to match systems with the correct component set, using a sort of JOIN operation between different components.
+        Components may be added and removed from their entities in either a one-to-one (1:1) or one-to-many (1:N) relationship.</p>
+      <p>Thinking about this analogy of ECS worlds as databases, what if we implemented an ECS framework using SQL databases, powered by <a href="https://sqlite.org">SQLite</a>?</p>
+      <p>The pros:</p>
+      <ul>
+        <li>With SQL, not only can we query for a specific component set, but we can further filter data based on their values.
+          For example, we can query for specific enumeration values inside components to implement state machines.</li>
+        <li>We can use an in-memory database or operate directly to files in the filesystem.
+          Using files will likely be slower, since they require I/O with the filesystem, but this feature might be useful in some cases.
+          For example, saving world data in disk permits inspecting the final state of the application after a crash.</li>
+        <li>We can load and save all data to files using <a href="https://www.sqlite.org/backup.html">SQLite's Backup API</a>, easily implementing quick save and quick load features.</li>
+        <li>Since world data is operated using SQL, we can implement systems in different progamming languages and all of them can operate on the same data, all it takes is an open connection to the shared database.
+          This is specially useful to develop platform-specific funcionatility and scripting systems.</li>
+      </ul>
+      <p>The cons:</p>
+      <ul>
+        <li>Even if we avoid disk I/O using an in-memory database, querying with SQLite will be slower than the specialized data structures used by other ECS frameworks, possibly orders of magnitude slower.
+          One of the benefits of ECS is that it's possible to layout data in a cache-friendly manner, so that iterating on components is very very fast.</li>
+        <li>Some types of data, like pointers to native structures, don't have a nice representation in SQLite and might need an additional indirection when stored as component data.</li>
+        <li>You need to know SQL to make the most out of this system.</li>
+      </ul>
+      <p>Even if it will certainly be slower than specialized ECS implementations, SQLite is very fast in general and it is likely fast enough for lots of game projects, so I want to experiment with this idea and see how far it goes.
+        This experimental ECS framework powered by SQLite will be called <strong>ECSQL</strong>.</p>
+      <h2 id="representing-entities-in-sql" tabindex="-1"><a class="header-anchor" href="#representing-entities-in-sql">Representing entities in SQL</a></h2>
+      <p>In ECS, entities are represented by a unique identifier, usually an integer value.
+        To represent entities in SQL, all we need to do is create an <code>entity</code> table that stores the existing entities, represented by their numeric ids:</p>
+      <pre><code class="language-sql">CREATE TABLE entity (
+  id INTEGER PRIMARY KEY
+);
+</code></pre>
+      <h2 id="representing-components-in-sql" tabindex="-1"><a class="header-anchor" href="#representing-components-in-sql">Representing components in SQL</a></h2>
+      <p>Components are data blocks that can be attached to entities.
+        All components must be associated to a living entity.
+        When the entity is deleted, its components should be deleted along with it.</p>
+      <p>To me, the best representation for ECS components in SQL is creating a table for each component type.</p>
+      <ul>
+        <li>Each component instance is uniquely identified by its owner entity's id.</li>
+        <li>When querying component sets for a system, all we need to do is <code>JOIN</code> all these tables together using the entity id.</li>
+        <li>To make sure components are deleted along with their owner entity, all we have to do is use a foreign key with <code>ON DELETE CASCADE</code> and SQLite will handle it automatically for us.</li>
+      </ul>
+      <p>The base for every component could be defined like the following:</p>
+      <pre><code class="language-sql">CREATE TABLE component (
+  -- Owner entity id
+  -- &quot;PRIMARY KEY&quot;: components are uniquely identified by their entity's id
+  -- &quot;REFERENCES entity(id)&quot;: foreign key constraint, 1:1 relationship
+  -- &quot;ON DELETE CASCADE&quot;: delete this component when entity is deleted
+  entity_id INTEGER PRIMARY KEY REFERENCES entity(id) ON DELETE CASCADE
+);
+</code></pre>
+      <p>For example, a 3D &quot;Position&quot; component could be defined like the following table:</p>
+      <pre><code class="language-sql">CREATE TABLE position (
+  entity_id INTEGER PRIMARY KEY REFERENCES entity(id) ON DELETE CASCADE,
+
+  -- 3D position axes, all defaulting to 0
+  x DEFAULT 0,
+  y DEFAULT 0,
+  z DEFAULT 0
+);
+</code></pre>
+      <p>As another example, a &quot;Velocity&quot; component could be defined like so:</p>
+      <pre><code class="language-sql">CREATE TABLE velocity (
+  entity_id INTEGER PRIMARY KEY REFERENCES entity(id) ON DELETE CASCADE,
+
+  -- Velocity value, in m/s
+  value DEFAULT 0
+);
+</code></pre>
+      <h2 id="querying-components-from-systems" tabindex="-1"><a class="header-anchor" href="#querying-components-from-systems">Querying components from systems</a></h2>
+      <p>Systems by themselves will not live in the SQLite database, but they will use SQL for querying components.
+        Let's take the &quot;Move&quot; system example one more time, which is applied to entities with both a &quot;Position&quot; and &quot;Velocity&quot; components as described above.
+        Iterating over all entities that have both components can be accomplished with the following query:</p>
+      <pre><code class="language-sql">SELECT 
+  entity_id,
+  position.x, position.y, position.z,
+  velocity.value
+FROM position
+JOIN velocity USING(entity_id);
+</code></pre>
+      <p>We could also easily support systems that require some components, but only optionally requires others.
+        This can be done by simply changing the <code>JOIN</code> by a <code>LEFT JOIN</code> or <code>RIGHT JOIN</code>, making SQLite return <code>NULL</code> for data from components that are not present in the entity.</p>
+      <h2 id="conclusion" tabindex="-1"><a class="header-anchor" href="#conclusion">Conclusion</a></h2>
+      <p>We've seen briefly what ECS is and how ECS worlds can be modeled as SQL databases.</p>
+      <p>In the <a href="../2024-12-15-ecsql-prototyping">next article</a>, we'll start implementing our experimental <strong>ECSQL</strong> framework.
+        See you there!</p>
+
+
+      <br />
+      <hr class="thin" />
+      <p>
+        Like this content? Sponsor my work using the button below!
+      </p>
+      <iframe src="https://github.com/sponsors/gilzoide/button" title="Sponsor gilzoide" height="32" width="114" style="border: 0; border-radius: 6px;"></iframe>
+
+    </div>
+  </div>
+
+  <div class="flex-stretch"></div>
+
+  <footer class="main-footer justify-center"><a href="https://github.com/gilzoide/">
+      <img src="/images/github.png" alt="GitHub" />
+    </a><a href="https://www.linkedin.com/in/gilzoide/">
+      <img src="/images/linkedin.png" alt="LinkedIn" />
+    </a>
+    <div class="flex-break"></div>
+    <p class="main-footer-copyright">Copyright ⓒ 2025 Gil Barbosa Reis</p>
+  </footer>
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.9.0/highlightjs-line-numbers.min.js"></script>
+  <script src="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/languages/sql.min.js"></script>
+  <script>
+    hljs.addPlugin(new CopyButtonPlugin());
+    hljs.highlightAll()
+    hljs.initLineNumbersOnLoad()
+  </script>
+  <script src="/js/dropdown.js"></script>
+</body>
+
+</html>

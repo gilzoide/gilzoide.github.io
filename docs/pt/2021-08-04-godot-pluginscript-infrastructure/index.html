@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="pt" dir="ltr">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-witdh, initial-scale=1" />
+  <title>
+    Implementando o esqueleto de uma biblioteca GDNative + PluginScript -
+    gilzoide
+  </title>
+  <link rel="icon" href="/images/about-picture.jpg" type="image/jpeg" />
+  <link rel="alternate" hreflang="en" href="/en/2021-08-04-godot-pluginscript-infrastructure/" />
+
+  <link rel="alternate" hreflang="pt" href="/pt/2021-08-04-godot-pluginscript-infrastructure/" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/cards.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/styles/github-dark-dimmed.min.css" integrity="sha512-zcatBMvxa7rT7dDklfjauWsfiSFParF+hRfCdf4Zr40/MmA1gkFcBRbop0zMpvYF3FmznYFgcL8wlcuO/GwHoA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.css" />
+  <link rel="stylesheet" href="/css/code_highlight.css" />
+</head>
+
+<body>
+  <nav class="main-nav">
+    <ul>
+      <li><a class="nav-text" href="/pt/">Blog</a></li>
+      <li><a class="nav-text" href="/pt/about/">Sobre</a></li>
+      <li class="dropdown-button">
+        <button class="nav-icon">
+          <img src="/images/locale-language.png" />
+        </button>
+        <div class="dropdown">
+          <a class="nav-text" href="/en/2021-08-04-godot-pluginscript-infrastructure/" lang="en" hreflang="en">English</a>
+
+          <a class="nav-text nav-active" href="" lang="pt" hreflang="pt">Português</a>
+        </div>
+      </li>
+    </ul>
+  </nav>
+
+  <div class="justify-center">
+    <div class="main-content">
+
+      <h2 class="card-title">
+        Implementando o esqueleto de uma biblioteca GDNative + PluginScript</h2>
+      <span class="card-meta">2021-08-04&ensp; | &ensp;
+        <div>
+          <a class="decorated-link card-tag">Godot</a>
+          <a class="decorated-link card-tag">Lua</a>
+          <a class="decorated-link card-tag">LuaJIT</a>
+          <a class="decorated-link card-tag">GDNative</a>
+          <a class="decorated-link card-tag">PluginScript</a>
+          <a class="decorated-link card-tag">C</a>
+        </div>
+      </span>
+
+      <blockquote>
+        <p>Originalmente publicado em <a href="https://github.com/gilzoide/godot-lua-pluginscript/blob/main/extras/articles/2-infrastructure-pt.md">https://github.com/gilzoide/godot-lua-pluginscript/blob/main/extras/articles/2-infrastructure-pt.md</a></p>
+      </blockquote>
+
+      <p>No <a href="../2021-07-28-godot-pluginscript-design">artigo anterior, discutimos sobre o projeto de um <em>plugin</em> para usar Lua no motor de jogos Godot</a>.
+        Hoje começaremos a implementar esse <em>plugin</em> com a infraestrutura base:
+        uma biblioteca <a href="https://godotengine.org/article/look-gdnative-architecture">GDNative</a>
+        que registra <a href="https://www.lua.org/portugues.html">Lua</a> como uma
+        linguagem de <em>scripting</em> em <a href="https://godotengine.org/">Godot</a>.
+        Os <em>scripts</em> ainda não funcionarão, mas Godot carregará corretamente
+        nosso <em>plugin</em> e reconhecerá arquivos <code>.lua</code>.</p>
+      <h2 id="como-usar-gdnative" tabindex="-1"><a class="header-anchor" href="#como-usar-gdnative">Como usar GDNative</a></h2>
+      <p>Vamos começar construindo uma biblioteca GDNative vazia.
+        Elas são bibliotecas dinâmicas (DLLs) que são carregadas em tempo
+        de execução pelo motor.
+        Elas devem declarar e exportar as funções <code>godot_gdnative_init</code> e
+        <code>godot_gdnative_terminate</code>, que serão chamadas quando o <em>plugin</em> é
+        carregado e finalizado, respectivamente.
+      </p>
+      <p>Bibliotecas GDNative só são carregadas quando necessárias para o
+        projeto, a não ser que sejam marcadas como <a href="https://docs.godotengine.org/pt_BR/stable/classes/class_gdnativelibrary.html#class-gdnativelibrary-property-singleton"><em>singletons</em></a>.
+        Como queremos que nosso <em>plugin</em> seja carregado ao inicializar o
+        projeto, para que <em>scripts</em> Lua sejam importados, marcaremos nossa
+        biblioteca como <em>singleton</em>.
+        Para isso, também precisamos declarar a função
+        <code>godot_gdnative_singleton</code>, ou Godot não aceitará nossa biblioteca.
+        O contra de usar uma biblioteca <em>singleton</em> é que precisaremos reiniciar
+        o editor toda vez que recompilarmos nosso <em>plugin</em>.
+      </p>
+      <p>Beleza, hora de por a mão na massa! <br />
+        Primeiramente, vamos baixar o <a href="https://github.com/godotengine/godot-headers">repositório da API em C do GDNative</a>.
+        Como estou usando <a href="https://git-scm.com/">Git</a> para o projeto,
+        adicionarei o repositório como um <a href="https://git-scm.com/book/pt-br/v2/Git-Tools-Submodules">submódulo</a>.
+        Vamos usar a pasta <code>lib</code> pra manter todas as bibliotecas de terceiros
+        organizados.</p>
+      <pre><code class="language-sh">git submodule add https://github.com/godotengine/godot-headers.git lib/godot-headers
+</code></pre>
+      <p>Como a API GDNative é bem baixo-nível, vou adicionar minha própria
+        <a href="https://github.com/gilzoide/high-level-gdnative">API de alto nível para GDNative (HGDN)</a>
+        pra facilitar a implementação:
+      </p>
+      <pre><code class="language-sh">git submodule add https://github.com/gilzoide/high-level-gdnative.git lib/high-level-gdnative
+</code></pre>
+      <p>Vamos usar a pasta <code>src</code> para organizar nosso código-fonte.
+        Este é o esqueleto para uma biblioteca GDNative, em C:</p>
+      <pre><code class="language-c">// src/language_gdnative.c
+
+// HGDN já inclui godot-headers
+#include &quot;hgdn.h&quot;
+
+// GDN_EXPORT assegura que os símbolos são exportados do jeito que Godot
+// espera. Isso não é necessário, já que os símbolos são exportados por
+// padrão, mas custa nada deixar explícito
+GDN_EXPORT void godot_gdnative_init(godot_gdnative_init_options *options) {
+    hgdn_gdnative_init(options);
+}
+
+GDN_EXPORT void godot_gdnative_terminate(godot_gdnative_terminate_options *options) {
+    hgdn_gdnative_terminate(options);
+}
+
+GDN_EXPORT void godot_gdnative_singleton() {
+}
+</code></pre>
+      <p>Como HGDN é uma biblioteca composta por somente um arquivo de cabeçalho,
+        precisamos de um arquivo C ou C++ para compilar sua implementação.
+        Poderíamos usar <code>src/language_gdnative.c</code> pra isso, mas vou adicionar um
+        arquivo novo pra evitar recompilar a implementação de HGDN em
+        construções futuras:</p>
+      <pre><code class="language-c">// src/hgdn.c
+#define HGDN_IMPLEMENTATION
+#include &quot;hgdn.h&quot;
+</code></pre>
+      <p>Hora de construir! 🛠 <br />
+        Usarei <a href="https://xmake.io">xmake</a> como sistema de construção, porque ele
+        é fácil de usar e suporta várias plataformas, assim como compilação
+        cruzada, direto de fábrica.
+        Além disso, xmake tem um sistema de pacotes integrado que usaremos mais
+        tarde pra adicionar Lua/LuaJIT ao projeto.
+        O <em>script</em> de construção <code>xmake.lua</code> é o seguinte:</p>
+      <pre><code class="language-lua">-- xmake.lua
+target(&quot;lua_pluginscript&quot;)
+    set_kind(&quot;shared&quot;)
+    -- Troca o nome do arquivo de saída pra algo fácil de encontrar,
+    -- algo como `build/lua_pluginscript_linux_x86_64.so`
+    set_targetdir(&quot;$(buildir)&quot;)
+    set_prefixname(&quot;&quot;)
+    set_suffixname(&quot;_$(os)_$(arch)&quot;)
+    -- Adiciona flags &quot;-I&quot; pro compilador localizar os cabeçalhos
+    -- de godot-headers e HGDN
+    add_includedirs(&quot;lib/godot-headers&quot;, &quot;lib/high-level-gdnative&quot;)
+    -- src/hgdn.c, src/language_gdnative.c
+    add_files(&quot;src/*.c&quot;)
+target_end()
+</code></pre>
+      <p>Rode o comando <code>xmake</code> e, se tudo correr bem, deve aparecer uma
+        biblioteca dinâmica com extensão <code>.so</code>, <code>.dll</code> ou <code>.dylib</code> na pasta
+        <code>build</code>.
+      </p>
+      <p>Hora de abrir Godot. <br />
+        Criei um novo projeto e adicionei o repositório do nosso <em>plugin</em> na pasta
+        <code>addons/godot-lua-pluginscript</code>.
+        Pra deixar o painel de Arquivos mais limpo, <a href="https://docs.godotengine.org/pt_BR/stable/getting_started/workflow/project_setup/project_organization.html#ignoring-specific-folders">adicionei arquivos .gdignore</a>
+        nas pastas <code>build</code>, <code>lib</code> e <code>src</code>.
+        Agora precisamos criar um novo Recurso do tipo GDNativeLibrary:
+      </p>
+      <p><img src="https://raw.githubusercontent.com/gilzoide/godot-lua-pluginscript/main/extras/articles/2-create-resource.png" alt=""></p>
+      <p><img src="https://raw.githubusercontent.com/gilzoide/godot-lua-pluginscript/main/extras/articles/2-create-gdnativelibrary.png" alt=""></p>
+      <p><img src="https://raw.githubusercontent.com/gilzoide/godot-lua-pluginscript/main/extras/articles/2-create-gdnativelibrary-save.png" alt=""></p>
+      <p>Marcar como <em>singleton</em>:</p>
+      <p><img src="https://raw.githubusercontent.com/gilzoide/godot-lua-pluginscript/main/extras/articles/2-set-singleton.png" alt=""></p>
+      <p>E por o caminho pra biblioteca dinâmica que acabamos de construir:</p>
+      <p><img src="https://raw.githubusercontent.com/gilzoide/godot-lua-pluginscript/main/extras/articles/2-pick-so.png" alt="">
+        <img src="https://raw.githubusercontent.com/gilzoide/godot-lua-pluginscript/main/extras/articles/2-pick-so-save.png" alt="">
+      </p>
+      <p>Reinicie o editor e nossa biblioteca deve estar carregada. Massa!</p>
+      <p><img src="https://raw.githubusercontent.com/gilzoide/godot-lua-pluginscript/main/extras/articles/2-settings-gdnative-enabled.png" alt=""></p>
+      <h2 id="como-criar-um-pluginscript" tabindex="-1"><a class="header-anchor" href="#como-criar-um-pluginscript">Como criar um PluginScript</a></h2>
+      <p>Se olharmos pra <a href="https://github.com/godotengine/godot-headers/blob/3.3/pluginscript/godot_pluginscript.h#L166">API do PluginScript</a>,
+        podemos ver que só há uma função definida, responsável por registrar
+        linguagens de <em>script</em> baseado numa descrição.
+        Essa descrição contém informação sobre o nome da linguagem, extensão dos
+        arquivos, informação usada para colorir o código no editor, como
+        palavras reservadas, delimitadores de comentários e de <em>strings</em>,
+        além de ponteiros para funções (<em>callbacks</em>) que serão chamadas por Godot para
+        inicializar/finalizar a linguagem, <em>scripts</em> e instâncias, <em>debuggar</em>
+        código, dentre outros.</p>
+      <p>Tudo que temos que fazer então é criar as funções necessárias,
+        preencher a descrição e registrar Lua como uma linguagem de <em>scripting</em>.
+        Por enquanto só vamos adicionar funções vazias para o <em>plugin</em> ser
+        carregado corretamente, no próximo artigo começaremos a implementar sua
+        funcionalidade. Também vamos pular os <em>callbacks</em> opcionais.</p>
+      <p>Adicionamos o seguinte no arquivo <code>src/language_gdnative.c</code>, logo abaixo
+        do início onde tem a linha <code>#include &quot;hgdn.h&quot;</code>:</p>
+      <pre><code class="language-c">// Chamada quando o ambiente de execução da linguagem for inicializado
+godot_pluginscript_language_data *lps_language_init() {
+    // TODO
+    return NULL;
+}
+
+// Chamada quando o ambiente de execução da linguagem for finalizado
+void lps_language_finish(godot_pluginscript_language_data *data) {
+    // TODO
+}
+
+// Chamada quando Godot registrar objetos globais, como Nós Autoload
+void lps_language_add_global_constant(godot_pluginscript_language_data *data, const godot_string *name, const godot_variant *value) {
+    // TODO
+}
+
+// Chamada quando um script Lua for carregado: const AlgumScript = preload(&quot;res://algum_script.lua&quot;)
+godot_pluginscript_script_manifest lps_script_init(godot_pluginscript_language_data *data, const godot_string *path, const godot_string *source, godot_error *error) {
+    godot_pluginscript_script_manifest manifest = {};
+    // Os objetos de Godot precisam ser inicializados, ou nosso
+    // plugin dá SEGFAULT
+    hgdn_core_api-&gt;godot_string_name_new_data(&amp;manifest.name, &quot;&quot;);
+    hgdn_core_api-&gt;godot_string_name_new_data(&amp;manifest.base, &quot;&quot;);
+    hgdn_core_api-&gt;godot_dictionary_new(&amp;manifest.member_lines);
+    hgdn_core_api-&gt;godot_array_new(&amp;manifest.methods);
+    hgdn_core_api-&gt;godot_array_new(&amp;manifest.signals);
+    hgdn_core_api-&gt;godot_array_new(&amp;manifest.properties);
+    // TODO
+    return manifest;
+}
+
+// Chamada quando um script Lua for finalizado
+void lps_script_finish(godot_pluginscript_script_data *data) {
+    // TODO
+}
+
+// Chamada quando uma instância for criada: var instancia = AlgumScript.new()
+godot_pluginscript_instance_data *lps_instance_init(godot_pluginscript_script_data *data, godot_object *owner) {
+    // TODO
+    return NULL;
+}
+
+// Chamada quando uma instância for finalizada
+void lps_instance_finish(godot_pluginscript_instance_data *data) {
+    // TODO
+}
+
+// Chamada ao escrever uma propriedade de instância: instancia.prop = valor
+godot_bool lps_instance_set_prop(godot_pluginscript_instance_data *data, const godot_string *name, const godot_variant *value) {
+    // TODO
+    return false;
+}
+
+// Chamada ao ler uma propriedade de instância: var valor = instancia.prop
+godot_bool lps_instance_get_prop(godot_pluginscript_instance_data *data, const godot_string *name, godot_variant *ret) {
+    // TODO
+    return false;
+}
+
+// Chamada ao chamar um método em uma instância: instancia.metodo(args)
+godot_variant lps_instance_call_method(godot_pluginscript_instance_data *data, const godot_string_name *method, const godot_variant **args, int argcount, godot_variant_call_error *error) {
+    // TODO
+    return hgdn_new_nil_variant();
+}
+
+// Chamada quando uma notificação for enviada à instância
+void lps_instance_notification(godot_pluginscript_instance_data *data, int notification) {
+    // TODO
+}
+</code></pre>
+      <p>Logo abaixo, definimos a descrição da linguagem:</p>
+      <pre><code class="language-c">// Declarado como variável global, porque Godot precisa que a
+// descrição seja válida até que nosso plugin seja finalizado
+godot_pluginscript_language_desc lps_language_desc = {
+    .name = &quot;Lua&quot;,
+    .type = &quot;Lua&quot;,
+    .extension = &quot;lua&quot;,
+    .recognized_extensions = (const char *[]){ &quot;lua&quot;, NULL },
+    .reserved_words = (const char *[]){
+        // Palavras chave de Lua
+        &quot;and&quot;, &quot;break&quot;, &quot;do&quot;, &quot;else&quot;, &quot;elseif&quot;, &quot;end&quot;,
+        &quot;false&quot;, &quot;for&quot;, &quot;function&quot;, &quot;goto&quot;, &quot;if&quot;, &quot;in&quot;,
+        &quot;local&quot;, &quot;nil&quot;, &quot;not&quot;, &quot;or&quot;, &quot;repeat&quot;, &quot;return&quot;,
+        &quot;then&quot;, &quot;true&quot;, &quot;until&quot;, &quot;while&quot;,
+        // Outros identificadores importantes
+        &quot;self&quot;, &quot;_G&quot;, &quot;_ENV&quot;, &quot;_VERSION&quot;,
+        NULL
+    },
+    .comment_delimiters = (const char *[]){ &quot;--&quot;, &quot;--[[ ]]&quot;, NULL },
+    .string_delimiters = (const char *[]){ &quot;' '&quot;, &quot;\&quot; \&quot;&quot;, &quot;[[ ]]&quot;, &quot;[=[ ]=]&quot;, NULL },
+    // Scripts Lua não usam classes nomeadas
+    .has_named_classes = false,
+    // Scripts builtin não funcionaram no meu teste, desativando...
+    .supports_builtin_mode = false,
+
+    // Callbacks
+    .init = &amp;lps_language_init,
+    .finish = &amp;lps_language_finish,
+    .add_global_constant = &amp;lps_language_add_global_constant,
+    .script_desc = {
+        .init = &amp;lps_script_init,
+        .finish = &amp;lps_script_finish,
+        .instance_desc = {
+            .init = &amp;lps_instance_init,
+            .finish = &amp;lps_instance_finish,
+            .set_prop = &amp;lps_instance_set_prop,
+            .get_prop = &amp;lps_instance_get_prop,
+            .call_method = &amp;lps_instance_call_method,
+            .notification = &amp;lps_instance_notification,
+        },
+    },
+};
+</code></pre>
+      <p>Agora o toque final, mudar a função <code>godot_gdnative_init</code> pra registrar
+        a linguagem:</p>
+      <pre><code class="language-c">GDN_EXPORT void godot_gdnative_init(godot_gdnative_init_options *options) {
+    hgdn_gdnative_init(options);
+    hgdn_pluginscript_api-&gt;godot_pluginscript_register_language(&amp;lps_language_desc);
+}
+</code></pre>
+      <p>Recompile o projeto usando o comando <code>xmake</code> e reinicie o editor.
+        Olha só, Godot reconhece o arquivo <code>xmake.lua</code> como um <em>script</em> Lua e o
+        código está colorido! Chique no úrtimo! =D</p>
+      <p><img src="https://raw.githubusercontent.com/gilzoide/godot-lua-pluginscript/main/extras/articles/2-pluginscript-xmake-lua.png" alt=""></p>
+      <h2 id="finalizando" tabindex="-1"><a class="header-anchor" href="#finalizando">Finalizando</a></h2>
+      <p>Com a base do nosso <em>PluginScript</em> pronto, podemos focar em implementar
+        sua funcionalidade.
+        A versão do projeto construído nesse artigo está disponível <a href="https://github.com/gilzoide/godot-lua-pluginscript/tree/blog-2-infrastructure">aqui</a>.</p>
+      <p>No <a href="../2021-08-17-godot-pluginscript-luajit-callbacks">próximo artigo</a> adicionaremos LuaJIT ao
+        projeto e começaremos a implementar os <em>callbacks</em> necessários.
+        Usarei um pouco da API C de Lua e a FFI do LuaJIT pra isso, vai ser uma
+        aventura e tanto!</p>
+      <p>Até a próxima! ;]</p>
+
+
+      <br />
+      <hr class="thin" />
+      <p>
+        Curte esse conteúdo? Patrocine meu trabalho usando o botão abaixo!
+      </p>
+      <iframe src="https://github.com/sponsors/gilzoide/button" title="Sponsor gilzoide" height="32" width="114" style="border: 0; border-radius: 6px;"></iframe>
+
+    </div>
+  </div>
+
+  <div class="flex-stretch"></div>
+
+  <footer class="main-footer justify-center"><a href="https://github.com/gilzoide/">
+      <img src="/images/github.png" alt="GitHub" />
+    </a><a href="https://www.linkedin.com/in/gilzoide/">
+      <img src="/images/linkedin.png" alt="LinkedIn" />
+    </a>
+    <div class="flex-break"></div>
+    <p class="main-footer-copyright">Copyright ⓒ 2025 Gil Barbosa Reis</p>
+  </footer>
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.9.0/highlightjs-line-numbers.min.js"></script>
+  <script src="https://unpkg.com/highlightjs-copy/dist/highlightjs-copy.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/languages/c.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/languages/lua.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/languages/bash.min.js"></script>
+  <script>
+    hljs.addPlugin(new CopyButtonPlugin());
+    hljs.highlightAll()
+    hljs.initLineNumbersOnLoad()
+  </script>
+  <script src="/js/dropdown.js"></script>
+</body>
+
+</html>
