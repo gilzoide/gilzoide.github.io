@@ -50,6 +50,10 @@ function setupHtmlBeautifier(eleventyConfig) {
   })
 }
 
+function setupGlobals(eleventyConfig) {
+  eleventyConfig.addGlobalData("year", new Date().getFullYear())
+}
+
 function setupFilters(eleventyConfig) {
   eleventyConfig.addFilter("datestr", function(date) {
     return date.toISOString().split('T')[0]
@@ -102,6 +106,7 @@ function setupI18n(eleventyConfig) {
 }
 
 module.exports = function(eleventyConfig) {
+  setupGlobals(eleventyConfig)
   setupFilters(eleventyConfig)
   setupMarkdownIt(eleventyConfig)
   setupHtmlBeautifier(eleventyConfig)
