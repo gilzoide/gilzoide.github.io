@@ -42,7 +42,7 @@
     <a class="undecorated-link" href="{{ p.url | url }}">
       {{ card_header(p.data.title, p.data.subtitle) }}
     </a>
-    {{ card_meta(show_date and p.data.date or "", p.data.tags | exclude(ignore_tags), p.url) }}
+    {{ card_meta(show_date and p.data.date or "", p.data.tags | exclude(ignore_tags) | sort, p.url) }}
     {% set description = p.data.description[language] or p.data.description["en"] or p.data.description %}
     {% if description %}
     <a class="undecorated-link" href="{{ p.url | url }}">
