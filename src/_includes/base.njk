@@ -18,6 +18,7 @@ footer_links:
   - name: Bluesky
     icon: /images/bluesky.png
     url: https://bsky.app/profile/gilzoide-dev.bsky.social
+cloudflare_analytics_token: 18393a3602c14f0eb610ae812fdc06fd
 ---
 {%- macro setup_highlight_css(languages) -%}
   {%- if languages.length > 0 -%}
@@ -111,5 +112,10 @@ footer_links:
     <script src="{{ script_url | url }}"></script>
     {%- endfor -%}
     <script src="{{ "/js/dropdown.js" | url }}"></script>
+
+    {%- if cloudflare_analytics_token %}
+      <!-- Cloudflare Web Analytics -->
+      <script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "{{ cloudflare_analytics_token }}"}'></script>
+    {% endif -%}
   </body>
 </html>
