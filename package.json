@@ -4,7 +4,8 @@
   "description": "",
   "scripts": {
     "build": "eleventy --input=src --config=src/.eleventy.js --output=docs",
-    "serve": "eleventy --input=src --config=src/.eleventy.js --output=docs --serve"
+    "serve": "eleventy --input=src --config=src/.eleventy.js --output=docs --serve",
+    "gh-pages-rebuild": "git rm --cached -r docs && npm run build && git add -f docs"
   },
   "repository": {
     "type": "git",

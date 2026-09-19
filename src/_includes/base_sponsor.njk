@@ -1,10 +1,8 @@
 ---
 layout: base
 ---
+{% from "sponsor.njk" import sponsor_block %}
 {{ content | safe }}
 <br/>
 <hr class="thin" />
-<p>
-  {{ "LikeContentSponsor" | i18n }}
-</p>
-<iframe src="https://github.com/sponsors/gilzoide/button" title="Sponsor gilzoide" height="32" width="114" style="border: 0; border-radius: 6px;"></iframe>
+{{ sponsor_block() }}
