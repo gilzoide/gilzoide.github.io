@@ -7,7 +7,8 @@ title_key:
 nav_items:
   - ["/", "Blog"]
   - ["/about/", "About"]
-meta_description:
+description:
+tags: []
 footer_links:
   - name: GitHub
     icon: /images/github.png
@@ -57,8 +58,16 @@ cloudflare_analytics_token: 18393a3602c14f0eb610ae812fdc06fd
     <meta name="viewport" content="width=device-witdh, initial-scale=1" />
     <title>{{ title }}</title>
     <meta property="og:title" content="{{ title }}" />
-    {%- if meta_description %}
-      <meta name="description" content="{{ meta_description }}" />
+    {%- for tag in tags | sort %}
+      {%- if tag == 'article' -%}
+        <meta property="og:type" content="article" />
+      {%- else -%}
+        <meta property="article:tag" content="{{ tag }}" />
+      {%- endif -%}
+    {% endfor -%}
+    {%- if description %}
+      <meta property="og:description" content="{{ description }}" />
+      <meta name="description" content="{{ description }}" />
     {% endif -%}
     <link rel="icon" href="{{ "/images/about-picture.jpg" | url }}" type="image/jpeg" />
     {%- for link in page | all_locale_links %}
