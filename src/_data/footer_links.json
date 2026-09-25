@@ -1,0 +1,17 @@
+[
+  {
+    "name": "GitHub",
+    "icon": "/images/github.png",
+    "url": "https://github.com/gilzoide/"
+  },
+  {
+    "name": "LinkedIn",
+    "icon": "/images/linkedin.png",
+    "url": "https://www.linkedin.com/in/gilzoide/"
+  },
+  {
+    "name": "Bluesky",
+    "icon": "/images/bluesky.png",
+    "url": "https://bsky.app/profile/gilzoide-dev.bsky.social"
+  }
+]

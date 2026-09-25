@@ -1,7 +1,7 @@
 {%- macro card_header(title, subtitle) -%}
 <h2 class="card-title">
   {{ title }}
-  {%- if subtitle %}
+  {% if subtitle -%}
     <br />
     <h3 class="card-subtitle">{{ subtitle }}</h3>
   {% endif -%}
